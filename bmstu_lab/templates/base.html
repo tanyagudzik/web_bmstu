@@ -1,0 +1,32 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block styles %}{% endblock %}
+</head>
+<body>
+  <!-- Общая верхняя плашка -->
+  <header class="site-topbar">
+    <!-- Кнопка «Домой» слева -->
+    <a class="site-topbar__home" href="{% url 'support_service' %}" aria-label="На главную">
+      <img class="site-topbar__home-icon" src="{% static 'img/home.png' %}" alt="">
+      <span>На главную</span>
+    </a>
+
+    <!-- Заголовок по центру -->
+    <p class="site-topbar__title">
+      {% block topbar_title %}Удаленная поддержка{% endblock %}
+    </p>
+  </header>
+
+  <!-- Контент страницы -->
+  <div class="space">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
+
+

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% block page_title %}{% endblock %}{% endblock %}
+
+{% block content %}
+  <div class="cards-header">
+    <p class="cards-question">
+      {% block surface_heading %}Заголовок секции{% endblock %}
+    </p>
+
+    {# ← Бейдж показываем только если есть обе переменные #}
+    {% if badge_url and badge_count is not None %}
+      <a class="tag-alert" href="{{ badge_url }}" aria-label="Текущий запрос">
+        <img class="tag-alert__icon" src="{% static 'img/mobile.png' %}" alt="">
+        <span class="tag-alert__text">Текущий запрос</span>
+        <span class="tag-alert__count">{{ badge_count }}</span>
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="cards-divider"></div>
+
+  <section class="cards-surface">
+    {% block surface_content %}{% endblock %}
+  </section>
+{% endblock %}
+
+
+
+

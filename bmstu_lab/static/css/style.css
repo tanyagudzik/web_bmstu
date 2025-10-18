@@ -1,0 +1,380 @@
+/* =========== CSS-переменные ========== */
+:root{
+  --accent: #4386F3;
+  --surface: #F4F4F5;
+  --line: #DDDDDE;
+  --badge: #F3692A;
+  --text: #000;
+}
+
+/* =========Шапка секции над подложкой======= */
+.cards-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 0;
+}
+.cards-question{
+  font-size:14px;
+  color:var(--text);
+}
+/* разделительная линия */
+.cards-divider{
+  height:1px;
+  background:var(--line);
+  margin-bottom:12px;
+}
+
+/* ============Подложка (фон + рамка)=========== */
+.cards-surface{
+  background:var(--surface);
+  border:1px solid var(--line);
+  padding:16px;
+  border-radius:0; /* как в макете */
+}
+
+/* ============= Базовые =========== */
+*{ box-sizing:border-box; }
+body{ font-family: Arial,"Helvetica Neue",Helvetica,"Liberation Sans","Nimbus Sans L",sans-serif; background:#EFEFEF; color:#000; }
+
+.space{ width:80%; margin:0 auto; }
+
+/* сетка карточек */
+.container{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(227px, 1fr));
+  gap:20px;
+}
+
+/* ============== Карточка ================ */
+.card{
+  background:#FFFFFF;
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  padding:16px;
+  min-height:176px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* иконка + заголовок + описание */
+.card__header{
+  display:grid;
+  grid-template-columns:71px 1fr;
+  column-gap:16px;
+  align-items:start;
+  margin-bottom:12px;
+}
+.card__icon{
+  width:71px;
+  height:67px;
+  object-fit:contain;
+  grid-column:1;
+  grid-row:1 / span 2;
+}
+.card__title{
+  grid-column:2; grid-row:1;
+  font-weight:700;
+  font-size:16px;
+  line-height:1.2;
+}
+.card__desc{
+  grid-column:2; grid-row:2;
+  font-weight:400;
+  font-size:14px;
+  line-height:1.35;
+}
+
+/* --- выравнивания иконки и заголовка --- */
+.card__title,
+.card__desc {
+  margin: 0;
+}
+
+.card__header{
+  row-gap: 6px;
+}
+
+/* футер (слева время, справа кнопка) */
+.card__footer{
+  font-weight:700;
+  margin-top:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.card__eta{
+  font-weight:700;
+  font-size:16px;
+}
+
+/* кнопка с синей обводкой, radius 4 */
+.btn{
+  font-weight:400;
+  display:inline-block;
+  text-decoration:none;
+  font-size:14px;
+  line-height:0.4;
+  padding:8px 14px;
+  border-radius:4px;
+  color:#000;
+}
+.btn--outline{
+  border:1px solid var(--accent);
+  background:transparent;
+}
+.btn--outline:hover{
+  background:rgba(67,134,243,.06);
+}
+
+/* опционально: если где-то остался класс .chip, подтянем его к виду «время» */
+.chip{ font-weight:700; font-size:20px; }
+
+/* ======= Topbar (общая для всех страниц) ======= */
+:root{
+  /* если ещё нет — добавим переменную цвета топбара */
+  --topbar: #1C4181;
+}
+
+.site-topbar{
+  height: 44px;                    /* как в макете */
+  background: var(--topbar);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;         /* заголовок по центру */
+  /* в макете «Stroke: white 10%». Повторим тонкие белые линии сверху/снизу: */
+  border-top: 1px solid rgba(255,255,255,.10);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+
+.site-topbar__title{
+  margin: 0;                       /* чтобы не сползал по вертикали */
+  font-weight: 700;
+  font-size: 16px;                 /* подгони при желании (14–16) */
+  line-height: 1;
+  letter-spacing: .2px;
+  text-align: center;
+}
+
+/* Кнопка Домой в топбаре */
+.site-topbar{ position:relative; }
+
+.site-topbar__home{
+  position:absolute; left:12px;
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 8px;
+  border-radius:6px;
+  text-decoration:none; color:#fff;
+  outline:none;
+}
+.site-topbar__home-icon{
+  width:40px; height:40px; display:block;
+  /* если иконка не белая — можно насильно обесцветить и сделать белой:
+     filter: brightness(0) invert(1); */
+}
+.site-topbar__home span{
+  font-size:12px; font-weight:600; color:#fff;
+}
+.site-topbar__home:hover{ background:rgba(255,255,255,.08); }
+.site-topbar__home:focus-visible{ box-shadow:0 0 0 2px rgba(255,255,255,.5); }
+
+@media (max-width:560px){
+  .site-topbar__home span{ display:none; }
+}
+/* ==== Оранжевый бейдж "Текущий запрос" ==== */
+.tag-alert{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;                     /* расстояние между иконкой и текстом */
+  height:37px;                  /* как в макете */
+  padding:0 14px;
+  background:#ED6034;           /* цвет из фигмы */
+  color:#fff;
+  text-decoration:none;
+  border-radius:6px;
+  border:1px solid rgba(0,0,0,.06);
+}
+
+.tag-alert__icon{
+  width:30px;
+  height:30x;
+  display:block;
+  background:transparent !important;
+  filter:none !important;     /* если раньше было invert() и т.п. */
+  box-shadow:none !important; /* на всякий случай */
+  /* если иконка не белая — сделаем белой: */
+}
+
+.tag-alert__text{
+  font-weight:700;
+  font-size:14px;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.tag-alert__count{
+  margin-left:6px;
+  background:#fff;
+  color:#000;
+  border-radius:9999px;
+  padding:3px 6px;
+  font-weight:700;
+  font-size:13px;
+  line-height:1;
+}
+
+/* ---------- support_request ---------- */
+
+/* контейнер под одну карточку, по центру */
+.request-wrap{
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* сама карточка */
+.request-card{
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  padding: 24px;
+}
+
+/* шапка карточки: большая иконка + заголовок */
+.request-card__header{
+  display: grid;
+  grid-template-columns: 120px 1fr; /* иконка слева, текст справа */
+  column-gap: 20px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.request-card__icon{
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+.request-card__title{
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+/* описание услуги */
+.request-card__desc{
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--text);
+  max-width: 700px; /* чтобы строки не растягивались на весь экран */
+}
+
+/* необязательная полоска между заголовком и описанием */
+.request-card__separator{
+  height: 1px;
+  background: var(--line);
+  margin: 12px 0 16px;
+  border-radius: 1px;
+}
+
+.card--request { background:#fff7f2; }
+
+.request-head{
+  background:#fff; border:1px solid var(--line); border-radius:10px;
+  padding:12px; margin-bottom:16px; display:grid; gap:6px;
+}
+
+.req-list{ display:block; }
+.req-row{
+  display:grid; grid-template-columns:72px 1fr 110px 90px 90px 100px 1fr;
+  gap:10px; align-items:center;
+  background:#fff; border:1px solid var(--line); border-radius:8px;
+  padding:8px 10px; margin-bottom:10px;
+}
+.req-row--head{ background:var(--surface); font-weight:700; }
+.req-cell--icon img{ width:60px; height:auto; object-fit:contain; }
+.req-cell--title{ font-weight:600; }
+
+/* ===== Request (page 3) ===== */
+.req { display: grid; gap: 14px; }
+
+.req__box{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  padding:14px;
+}
+
+.req-meta{
+  font-size:14px;
+  line-height:1.1;   /* плотнее строки */
+}
+.req-meta dt,
+.req-meta dd{
+  margin:0;          /* убираем стандартные отступы */
+  padding:0;
+  font-weight:400;   /* без жирного */
+}
+
+/* таблица состава заявки */
+.tbl{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;                 /* чтобы скругления работали */
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.tbl thead th{
+  background:#f7f7f7;
+  text-align:left;
+  font-weight:700;
+  padding:12px 12px;
+  border-bottom:1px solid var(--line);
+}
+.tbl tbody td{
+  padding:12px 12px;
+  border-top:1px solid #eee;
+}
+.tbl tbody tr:nth-child(even){ background:#fafafa; }
+.tbl tbody tr:hover{ background:#f5f9ff; }
+
+.req-meta dt{ display:inline; }
+.req-meta dd{ display:inline; }
+.req-meta dd::after{ content:""; display:block; } /* перенос на новую строку после значения */
+
+/* Поиск под заголовком */
+.searchbar{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin:8px 0 16px;
+}
+.searchbar input[type="text"]{
+  flex:1;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  font-size:14px;
+  background:#fff;
+}
+.btn.btn--primary{
+  border:1px solid var(--accent);
+  background:var(--accent);
+  color:#fff;
+  border-radius:6px;
+  padding:8px 12px;
+  line-height:14px;
+}
+.searchbar__reset{
+  text-decoration:none;
+  font-size:14px;
+  color:#555;
+}
+.searchbar__reset:hover{ text-decoration:underline; }
+.searchbar__empty{ color:#666; margin:4px 0 12px; }

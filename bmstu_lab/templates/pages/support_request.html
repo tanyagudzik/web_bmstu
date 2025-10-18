@@ -1,0 +1,24 @@
+{% extends 'layouts/surface_base.html' %}
+{% load static %}
+
+{% block page_title %}Удаленная поддержка{% endblock %}
+{% block surface_heading %}Выбранная услуга{% endblock %}
+
+
+{% block surface_badge %}{{ block.super }}{% endblock %}
+
+{% block surface_content %}
+  {% if not_found %}
+    <p>Услуга не найдена.</p>
+  {% else %}
+    <div class="request-detail">
+      <div class="request-detail__icon">
+        <img src="{% static item.img %}" alt="{{ item.title }}">
+      </div>
+      <div class="request-detail__text">
+        <h2 class="request-detail__title">{{ item.title }}</h2>
+        <p class="request-detail__desc">{{ item.desc }}</p>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
