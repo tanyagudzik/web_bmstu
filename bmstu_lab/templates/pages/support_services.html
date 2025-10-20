@@ -1,0 +1,42 @@
+{% extends 'layouts/surface_base.html' %}
+{% load static %}
+
+{% block page_title %}Удаленная поддержка{% endblock %}
+{% block surface_heading %}Какой вид услуги наиболее актуален для вашего запроса?{% endblock %}
+
+{% block surface_content %}
+
+  <!-- Поиск услуг -->
+  <form method="get" class="searchbar" role="search">
+    <input type="text"
+           name="q"
+           placeholder="Найти услугу…"
+           value="{{ q }}"
+           aria-label="Поиск по названиям услуг" />
+    <button type="submit" class="btn btn--primary">Поиск</button>
+    {% if q %}
+      <a class="searchbar__reset" href="{% url 'support_services' %}">Сбросить</a>
+    {% endif %}
+  </form>
+
+  {% if q and not items %}
+    <p class="searchbar__empty">По запросу «{{ q }}» ничего не найдено.</p>
+  {% endif %}
+
+  <div class="container">
+    {% for item in items %}
+      <div class="card">
+        <div class="card__header">
+          <img src="{% static item.img %}" class="card__icon" alt="{{ item.title }}">
+          <div class="card__headtexts">
+            <p class="card__title">{{ item.title }}</p>
+          </div>
+        </div>
+        <div class="card__footer">
+          <span class="card__eta">{{ item.eta }}</span>
+          <a class="btn btn--outline" href="{% url 'support_service' item.id %}">Подробнее</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

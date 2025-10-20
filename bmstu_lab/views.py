@@ -60,7 +60,7 @@ def _filter_items_by_query(items, q: str):
         return items, ""
     return [it for it in items if q in it["title"].lower()], q
 
-def support_service(request):
+def support_services(request):
     filtered, q = _filter_items_by_query(ITEMS, request.GET.get("q"))
 
     req = _mock_current_request()
@@ -69,20 +69,20 @@ def support_service(request):
         "q": q,  # чтобы значение сохранилось в <input value="{{ q }}">
         # бейдж показываем на странице 1
         "badge_count": len(req["lines"]),
-        "badge_url": reverse("request_view", args=[req["id"]]),
+        "badge_url": reverse("support_request", args=[req["id"]]),
     }
-    return render(request, "pages/support_service.html", ctx)
+    return render(request, "pages/support_services.html", ctx)
 
-def support_request(request, service_id: int):
+def support_service(request, service_id: int):
     item = next((x for x in ITEMS if x["id"] == service_id), None)
     if not item:
-        return render(request, "pages/support_request.html", {"not_found": True}, status=404)
+        return render(request, "pages/support_service.html", {"not_found": True}, status=404)
     # на странице 2 бейдж НЕ передаём
-    return render(request, "pages/support_request.html", {"item": item})
+    return render(request, "pages/support_service.html", {"item": item})
 
-def request_view(request, rid: int):
+def support_request(request, rid: int):
     req = _mock_current_request()
     if rid != req["id"]:
-        return render(request, "pages/request_view.html",
+        return render(request, "pages/support_request.html",
                       {"not_found": True}, status=404)
-    return render(request, "pages/request_view.html", {"req": req})
+    return render(request, "pages/support_request.html", {"req": req})
