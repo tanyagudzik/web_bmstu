@@ -16,9 +16,9 @@
       <dl class="req-meta">
         <div><dt>ID: </dt><dd>{{ req.id }}</dd></div>
         <div><dt>Статус: </dt><dd>{{ req.status }}</dd></div>
-        <div><dt>Создатель: </dt><dd>{{ req.owner }}</dd></div>
+        <div><dt>Создатель: </dt><dd>{{ req.requester.username }}</dd></div>
         <div><dt>Помещение: </dt><dd>{{ req.room }}</dd></div>
-        <div><dt>Создана: </dt><dd>{{ req.created }}</dd></div>
+        <div><dt>Создана: </dt><dd>{{ req.created_at|date:"Y-m-d H:i" }}</dd></div>
         <div><dt>Результат вычислений: </dt><dd>{{ req.calc_result|default:"—" }}</dd></div>
       </dl>
     </div>
@@ -29,24 +29,24 @@
           <tr>
             <th>Услуга</th>
             <th>Название</th>
-            <th>Время</th>
+            <th>Ожидание</th>
             <th>Кол-во</th>
-            <th>Порядок</th>
-            <th>Главный</th>
+            <th>Сумма</th>
             <th>Комментарий</th>
           </tr>
         </thead>
         <tbody>
-        {% for line in req.lines %}
+        {% for line in lines %}
           <tr>
-            <td>{{ line.service_id }}</td>
-            <td>{{ line.title }}</td>
-            <td>{{ line.eta }}</td>
-            <td>{{ line.qty }}</td>
-            <td>{{ line.order|default:"—" }}</td>
-            <td>{% if line.main %}Да{% else %}Нет{% endif %}</td>
+            <td>{{ line.support_service.id }}</td>
+            <td>{{ line.support_service.title }}</td>
+            <td>{{ line.support_service.eta }}</td>
+            <td>{{ line.qty|default:"1" }}</td>
+            <td>{{ line.amount|default:"—" }}</td>
             <td>{{ line.comment|default:"—" }}</td>
           </tr>
+        {% empty %}
+          <tr><td colspan="6">Строк в заявке пока нет.</td></tr>
         {% endfor %}
         </tbody>
       </table>

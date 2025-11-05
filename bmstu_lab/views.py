@@ -1,88 +1,82 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.db import connection
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+from .models import SupportService, SupportRequest, SupportRequestService
 
-# каталог услуг (как в странице 1)
-ITEMS = [
-    {"id": 1,
-     "img": "img/printer_error.png",
-     "title": "Не работает принтер",
-     "desc": "Устройство не подключается к сети или драйвер не отвечает",
-     "eta": "2 часа"},
-    {"id": 2,
-     "img": "img/email_error.png",
-     "title": "Нет доступа к корпоративной почте",
-     "desc": "Проблемы с подключением к корпоративному почтовому ящику",
-     "eta": "8 часов"},
-    {"id": 3,
-     "img": "img/connection_error.png",
-     "title": "Отсутствует интернет-соединение",
-     "desc": "Проблемы с подключением устройств к сети Интернет", "eta": "6 часов"},
-    {"id": 4,
-     "img": "img/installation_needed.png",
-     "title": "Требуется установка ПО",
-     "desc": "Установка и настройка требуемого программного обеспечения",
-     "eta": "4 часа"},
-]
-
-def _mock_current_request():
-    return {
-        "id": 101,
-        "status": "Черновик",
-        "owner": "Пользователь",
-        "room": "Офис 105",
-        "created": "2025-10-18 12:00",
-        "calc_result": "",
-        "lines": [
-            {
-                "service_id": 1,
-                "title": "Не работает принтер",
-                "eta": "2 часа",
-                "qty": 1,
-                "order": None,
-                "main": False,
-                "comment": "IP-адрес принтера, проверил подключение к сети, перезагрузил",
-            },
-            {
-                "service_id": 3,
-                "title": "Отсутствует интернет-соединение",
-                "eta": "6 часов",
-                "qty": 2,
-                "order": None,
-                "main": False,
-                "comment": "Не работает проводной и беспроводной интернет",
-            },
-        ],
-    }
-
-def _filter_items_by_query(items, q: str):
-    q = (q or "").strip().lower()
-    if not q:
-        return items, ""
-    return [it for it in items if q in it["title"].lower()], q
 
 def support_services(request):
-    filtered, q = _filter_items_by_query(ITEMS, request.GET.get("q"))
+    """Страница каталога услуг."""
+    q = (request.GET.get("q") or "").strip().lower()
 
-    req = _mock_current_request()
+    services = SupportService.objects.filter(is_active=True, is_deleted=False)
+    if q:
+        services = services.filter(title__icontains=q)
+
+    # Ищем черновик текущего пользователя (корзину)
+    current_request = None
+    if request.user.is_authenticated:
+        current_request = (
+            SupportRequest.objects.filter(
+                requester=request.user, status=SupportRequest.Status.DRAFT, is_deleted=False
+            ).first()
+        )
+
     ctx = {
-        "items": filtered,
-        "q": q,  # чтобы значение сохранилось в <input value="{{ q }}">
-        # бейдж показываем на странице 1
-        "badge_count": len(req["lines"]),
-        "badge_url": reverse("support_request", args=[req["id"]]),
+        "items": services,
+        "q": q,
+        "badge_count": (
+            SupportRequestService.objects.filter(support_requests=current_request).count()
+            if current_request
+            else 0
+        ),
+        "badge_url": (
+            reverse("support_request", args=[current_request.id])
+            if current_request
+            else "#"
+        ),
     }
     return render(request, "pages/support_services.html", ctx)
 
+
 def support_service(request, service_id: int):
-    item = next((x for x in ITEMS if x["id"] == service_id), None)
-    if not item:
-        return render(request, "pages/support_service.html", {"not_found": True}, status=404)
-    # на странице 2 бейдж НЕ передаём
+    """Карточка услуги."""
+    item = get_object_or_404(
+        SupportService, pk=service_id, is_active=True, is_deleted=False
+    )
     return render(request, "pages/support_service.html", {"item": item})
 
+
+@login_required
 def support_request(request, rid: int):
-    req = _mock_current_request()
-    if rid != req["id"]:
-        return render(request, "pages/support_request.html",
-                      {"not_found": True}, status=404)
-    return render(request, "pages/support_request.html", {"req": req})
+    """Текущая заявка (корзина)."""
+    req = get_object_or_404(
+        SupportRequest,
+        id=rid,
+        requester=request.user,
+        is_deleted=False,
+    )
+
+    items = SupportRequestService.objects.filter(support_requests=req).select_related("support_service")
+
+    ctx = {"req": req, "lines": items}
+    return render(request, "pages/support_request.html", ctx)
+
+
+@login_required
+def delete_request_sql(request, rid: int):
+    """
+    Логическое удаление заявки через SQL (без ORM).
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE support_requests
+            SET is_deleted = TRUE,
+                deleted_at = NOW(),
+                status = 'deleted'
+            WHERE id = %s AND requester_id = %s AND status = 'draft'
+            """,
+            [rid, request.user.id],
+        )
+    return render(request, "pages/request_deleted.html", {"rid": rid})

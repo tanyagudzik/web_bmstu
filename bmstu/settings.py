@@ -134,3 +134,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATICFILES_DIRS = [
     BASE_DIR / "bmstu_lab/static",
 ]
+
+# куда вести после успешного входа
+LOGIN_REDIRECT_URL = '/support_services/'
+# куда вести после выхода (если пользуешься LogoutView)
+LOGOUT_REDIRECT_URL = '/support_services/'
+# (необязательно) куда слать неавторизованных
+LOGIN_URL = '/accounts/login/'
