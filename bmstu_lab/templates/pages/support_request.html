@@ -13,44 +13,38 @@
   <section class="req">
 
     <div class="req__box">
-      <dl class="req-meta">
-        <div><dt>ID: </dt><dd>{{ req.id }}</dd></div>
-        <div><dt>Статус: </dt><dd>{{ req.status }}</dd></div>
-        <div><dt>Создатель: </dt><dd>{{ req.requester.username }}</dd></div>
-        <div><dt>Помещение: </dt><dd>{{ req.room }}</dd></div>
-        <div><dt>Создана: </dt><dd>{{ req.created_at|date:"Y-m-d H:i" }}</dd></div>
-        <div><dt>Результат вычислений: </dt><dd>{{ req.calc_result|default:"—" }}</dd></div>
-      </dl>
+      <div class="card" style="padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08);">
+        <div><strong>Создана:</strong> {{ req.created_at|date:"d.m.Y H:i" }}</div>
+        {% if req.room %}
+          <div style="margin-top:6px;"><strong>Помещение:</strong> {{ req.room }}</div>
+        {% endif %}
+      </div>
     </div>
 
-    <div class="req__list">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Услуга</th>
-            <th>Название</th>
-            <th>Ожидание</th>
-            <th>Кол-во</th>
-            <th>Сумма</th>
-            <th>Комментарий</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for line in lines %}
-          <tr>
-            <td>{{ line.support_service.id }}</td>
-            <td>{{ line.support_service.title }}</td>
-            <td>{{ line.support_service.eta }}</td>
-            <td>{{ line.qty|default:"1" }}</td>
-            <td>{{ line.amount|default:"—" }}</td>
-            <td>{{ line.comment|default:"—" }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="6">Строк в заявке пока нет.</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <div class="req__list" style="margin-top: 16px;">
+
+      {% for line in lines %}
+        <div class="card" style="display:flex; gap:16px; align-items:flex-start; padding:16px; margin-bottom:12px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.08);">
+            <div style="flex:0 0 72px; display:flex; align-items:center; justify-content:center; margin-right:12px;">
+              {% if line.support_service.img %}
+                <img src="{% static line.support_service.img %}" alt="{{ line.support_service.title }}" style="width:72px; height:72px; object-fit:contain;">
+              {% else %}
+                <span style="font-size:12px; color:#8a8a8a;">нет фото</span>
+              {% endif %}
+            </div>
+          <div style="flex:1;">
+            <div style="font-weight:600; margin-bottom:4px;">{{ line.support_service.title }}</div>
+            <div style="font-size:13px; color:#666; margin-bottom:6px;">Ожидание: {{ line.support_service.eta|default:"—" }}</div>
+            {% if line.comment %}
+              <div style="font-size:13px;"><strong>Комментарий:</strong> {{ line.comment }}</div>
+            {% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <p>Строк в заявке пока нет.</p>
+      {% endfor %}
     </div>
+
 
   </section>
   {% endif %}

@@ -3,6 +3,7 @@ from django.db import connection
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from .models import SupportService, SupportRequest, SupportRequestService
+from .utils import get_current_user
 
 
 def support_services(request):
@@ -15,12 +16,12 @@ def support_services(request):
 
     # Ищем черновик текущего пользователя (корзину)
     current_request = None
-    if request.user.is_authenticated:
-        current_request = (
-            SupportRequest.objects.filter(
-                requester=request.user, status=SupportRequest.Status.DRAFT, is_deleted=False
-            ).first()
-        )
+    current_user = get_current_user()
+    current_request = (
+        SupportRequest.objects.filter(
+            requester=current_user, status=SupportRequest.Status.DRAFT, is_deleted=False
+        ).first()
+    )
 
     ctx = {
         "items": services,
@@ -50,10 +51,11 @@ def support_service(request, service_id: int):
 @login_required
 def support_request(request, rid: int):
     """Текущая заявка (корзина)."""
+    current_user = get_current_user()
     req = get_object_or_404(
         SupportRequest,
         id=rid,
-        requester=request.user,
+        requester=current_user,
         is_deleted=False,
     )
 
@@ -68,6 +70,7 @@ def delete_request_sql(request, rid: int):
     """
     Логическое удаление заявки через SQL (без ORM).
     """
+    current_user = get_current_user()
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -77,6 +80,6 @@ def delete_request_sql(request, rid: int):
                 status = 'deleted'
             WHERE id = %s AND requester_id = %s AND status = 'draft'
             """,
-            [rid, request.user.id],
+            [rid, current_user.id],
         )
     return render(request, "pages/request_deleted.html", {"rid": rid})

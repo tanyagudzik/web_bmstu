@@ -73,6 +73,8 @@ class SupportRequestService(models.Model):
     amount = models.IntegerField(null=True, blank=True, verbose_name="сумма")
     comment = models.TextField(null=True, blank=True, verbose_name="комментарий")
 
+    ok = models.BooleanField(null=True, blank=True, verbose_name="галочка")
+
     class Meta:
         db_table = "support_request_service"
         verbose_name = "строка заявки"
