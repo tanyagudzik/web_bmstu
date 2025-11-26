@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'bmstu_lab.apps.BmstuLabConfig',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -141,3 +142,10 @@ LOGIN_REDIRECT_URL = '/support_services/'
 LOGOUT_REDIRECT_URL = '/support_services/'
 # (необязательно) куда слать неавторизованных
 LOGIN_URL = '/accounts/login/'
+
+REST_FRAMEWORK = {
+    # NO-AUTH: можно всем читать/писать
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}

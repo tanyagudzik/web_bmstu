@@ -26,4 +26,5 @@ urlpatterns = [
                               redirect_authenticated_user=True), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', include('bmstu_lab.urls')),
+    path('', include('bmstu_lab.api_urls')),
 ]

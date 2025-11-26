@@ -37,7 +37,7 @@ class SupportRequest(models.Model):
         FINISHED = "finished", "завершён"
         REJECTED = "rejected", "отклонён"
 
-    requester    = models.ForeignKey(User, on_delete=models.PROTECT, related_name="requests", verbose_name="пользователь")
+    requester    = models.ForeignKey(User, on_delete=models.PROTECT, related_name="requests", verbose_name="пользователь", null=True,blank=True)  # NO-AUTH
     engineer     = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="assigned_requests", verbose_name="инженер")
 
     status       = models.CharField("статус", max_length=50, choices=Status.choices, default=Status.DRAFT)
