@@ -48,16 +48,28 @@ body{
 .card__icon{ width:71px; height:67px; object-fit:contain; grid-column:1; grid-row:1 / span 2; }
 .card__title{ grid-column:2; grid-row:1; font-weight:700; font-size:16px; line-height:1.2; margin:0; }
 .card__desc{  grid-column:2; grid-row:2; font-size:14px; line-height:1.35; margin:0; }
-.card__footer{ font-weight:700; margin-top:auto; display:flex; align-items:center; justify-content:space-between; }
-.card__eta{ font-weight:700; font-size:16px; }
+.card__footer{ font-weight:700; margin-top:auto; display:flex; align-items:flex-start; justify-content:space-between; gap:40px; }
+.card__eta{ font-weight:700; font-size:16px; white-space: nowrap; }
+.card__actions{ display:flex; flex-direction:column; gap:4px; align-items:stretch; width:100%; }
+.card__action-btn{
+     width:100%;
+     text-align:center;
+     font-size:13px;
+     padding:2px 4px;
+     cursor:pointer;
+}
+.card__action-form{ width:100%; margin:0; }
 
 /* кнопки */
 .btn{
   display:inline-block; text-decoration:none; font-size:14px;
   padding:8px 14px; border-radius:4px; color:#000; line-height:1;
+  cursor:pointer;
 }
 .btn--outline{ border:1px solid var(--accent); background:transparent; }
 .btn--outline:hover{ background:rgba(67,134,243,.06); }
+.btn--primary{ border:1px solid var(--accent); background:var(--accent); color:#fff; }
+.btn--primary:hover{ background:rgba(67,134,243,.85); border-color:rgba(67,134,243,.9); }
 
 /* опционально: .chip под «время» */
 .chip{ font-weight:700; font-size:20px; }

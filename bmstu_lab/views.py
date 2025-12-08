@@ -1,5 +1,7 @@
-from django.shortcuts import render, get_object_or_404
-from django.db import connection
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db import connection, transaction
+from django.utils.timezone import now
+from django.http import HttpResponseNotAllowed
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from .models import SupportService, SupportRequest, SupportRequestService
@@ -46,6 +48,35 @@ def support_service(request, service_id: int):
         SupportService, pk=service_id, is_active=True, is_deleted=False
     )
     return render(request, "pages/support_service.html", {"item": item})
+
+
+def add_service_to_request(request, service_id: int):
+    """Добавление услуги в текущую заявку-черновик."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    current_user = get_current_user()
+    service = get_object_or_404(
+        SupportService, pk=service_id, is_active=True, is_deleted=False
+    )
+
+    with transaction.atomic():
+        draft, _ = SupportRequest.objects.get_or_create(
+            requester=current_user,
+            status=SupportRequest.Status.DRAFT,
+            is_deleted=False,
+            defaults={"created_at": now()},
+        )
+        SupportRequestService.objects.create(
+            support_service=service,
+            support_requests=draft,
+            qty=1,
+            amount=None,
+            comment="",
+        )
+
+    redirect_to = request.POST.get("next") or reverse("support_services")
+    return redirect(redirect_to)
 
 
 @login_required
