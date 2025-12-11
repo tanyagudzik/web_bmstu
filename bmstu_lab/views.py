@@ -95,6 +95,75 @@ def support_request(request, rid: int):
     ctx = {"req": req, "lines": items}
     return render(request, "pages/support_request.html", ctx)
 
+@login_required
+def support_request_form(request, rid: int):
+    """
+    Оформление заявки:
+    - сохраняем room (кабинет) в самой заявке,
+    - сохраняем comment по каждой строке заявки,
+    - переводим статус из draft в formed.
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    current_user = get_current_user()
+    req = get_object_or_404(
+        SupportRequest,
+        id=rid,
+        requester=current_user,
+        is_deleted=False,
+    )
+
+    # Берём все строки заявки
+    lines = SupportRequestService.objects.filter(support_requests=req)
+
+    with transaction.atomic():
+        # ---- room (поле самой заявки) ----
+        room = (request.POST.get("room") or "").strip()
+        if room:
+            req.room = room
+        else:
+            req.room = None
+
+        # ---- comment по каждой строке ----
+        for line in lines:
+            key = f"comment_{line.id}"
+            comment = (request.POST.get(key) or "").strip()
+            line.comment = comment or None
+            line.save(update_fields=["comment"])
+
+        # ---- смена статуса на "сформирован" ----
+        update_fields = ["room"]
+        if req.status == SupportRequest.Status.DRAFT:
+            req.status = SupportRequest.Status.FORMED
+            req.requested_at = now()
+            update_fields.extend(["status", "requested_at"])
+
+        req.save(update_fields=update_fields)
+
+    return redirect("support_request", rid=rid)
+
+
+@login_required
+def support_request_line_delete(request, rid: int, line_id: int):
+    """
+    Удалить одну услугу из заявки.
+    Делаем через GET по ссылке с крестиком и возвращаемся на страницу заявки.
+    """
+    current_user = get_current_user()
+    req = get_object_or_404(
+        SupportRequest,
+        id=rid,
+        requester=current_user,
+        is_deleted=False,
+    )
+
+    SupportRequestService.objects.filter(
+        id=line_id,
+        support_requests=req,
+    ).delete()
+
+    return redirect("support_request", rid=rid)
 
 @login_required
 def delete_request_sql(request, rid: int):
