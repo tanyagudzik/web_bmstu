@@ -34,7 +34,14 @@
         </div>
         <div class="card__footer">
           <span class="card__eta">{{ item.eta }}</span>
-          <a class="btn btn--outline" href="{% url 'support_service' item.id %}">Подробнее</a>
+          <div class="card__actions">
+            <a class="btn btn--outline card__action-btn" href="{% url 'support_service' item.id %}">Подробнее</a>
+            <form method="post" action="{% url 'support_service_add' item.id %}" class="card__action-form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'support_services' %}{% if q %}?q={{ q|urlencode }}{% endif %}">
+              <button type="submit" class="btn btn--primary card__action-btn">Добавить в заявку</button>
+            </form>
+          </div>
         </div>
       </div>
     {% endfor %}

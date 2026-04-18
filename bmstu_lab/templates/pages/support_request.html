@@ -3,55 +3,146 @@
 
 {% block page_title %}Текущая заявка{% endblock %}
 {% block surface_heading %}Текущая заявка{% endblock %}
-{# Бейдж на этой странице НЕ показываем #}
 {% block surface_badge %}{% endblock %}
 
 {% block surface_content %}
-  {% if not_found %}
-    <p class="alert">Заявка не найдена.</p>
-  {% else %}
-  <section class="req">
+<section class="request-wrap req">
 
-    <div class="req__box">
-      <dl class="req-meta">
-        <div><dt>ID: </dt><dd>{{ req.id }}</dd></div>
-        <div><dt>Статус: </dt><dd>{{ req.status }}</dd></div>
-        <div><dt>Создатель: </dt><dd>{{ req.owner }}</dd></div>
-        <div><dt>Помещение: </dt><dd>{{ req.room }}</dd></div>
-        <div><dt>Создана: </dt><dd>{{ req.created }}</dd></div>
-        <div><dt>Результат вычислений: </dt><dd>{{ req.calc_result|default:"—" }}</dd></div>
-      </dl>
-    </div>
+  {% if lines %}
+    <form method="post"
+          action="{% url 'support_request_form' req.id %}"
+          class="req-form">
+      {% csrf_token %}
 
-    <div class="req__list">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Услуга</th>
-            <th>Название</th>
-            <th>Время</th>
-            <th>Кол-во</th>
-            <th>Порядок</th>
-            <th>Главный</th>
-            <th>Комментарий</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for line in req.lines %}
-          <tr>
-            <td>{{ line.service_id }}</td>
-            <td>{{ line.title }}</td>
-            <td>{{ line.eta }}</td>
-            <td>{{ line.qty }}</td>
-            <td>{{ line.order|default:"—" }}</td>
-            <td>{% if line.main %}Да{% else %}Нет{% endif %}</td>
-            <td>{{ line.comment|default:"—" }}</td>
-          </tr>
+      <!-- Шапка заявки + поле помещения -->
+      <div class="req__box">
+        <div class="request-head">
+          <dl class="req-meta">
+            <dt>ID заявки:</dt>
+            <dd>{{ req.id }}</dd>
+
+            <dt>Статус:</dt>
+            <dd>{{ req.get_status_display }}</dd>
+
+            <dt>Дата создания:</dt>
+            <dd>{{ req.created_at|date:"d.m.Y H:i" }}</dd>
+
+            <dt>Создатель:</dt>
+            <dd>{{ req.requester.username|default:"—" }}</dd>
+
+            <dt>Дата формирования:</dt>
+            <dd>
+              {% if req.requested_at %}
+                {{ req.requested_at|date:"d.m.Y H:i" }}
+              {% else %}—{% endif %}
+            </dd>
+
+            <dt>Дата завершения:</dt>
+            <dd>
+              {% if req.finished_at %}
+                {{ req.finished_at|date:"d.m.Y H:i" }}
+              {% else %}—{% endif %}
+            </dd>
+
+            <dt>Помещение:</dt>
+            <dd>
+              <input type="text"
+                     name="room"
+                     class="req-room-input"
+                     value="{{ req.room|default_if_none:'' }}"
+                     placeholder="Помещение">
+            </dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Список услуг: узкие строки в одну линию -->
+      <div class="req__list">
+        {% for line in lines %}
+          <article class="req-line">
+            <!-- 1. Картинка -->
+            <div class="req-line__img">
+              {% if line.support_service.img %}
+                <img src="{% static line.support_service.img %}"
+                     alt="{{ line.support_service.title }}">
+              {% else %}
+                <span class="req-line__img-empty">нет фото</span>
+              {% endif %}
+            </div>
+
+            <!-- 2. Описание услуги -->
+            <div class="req-line__main">
+              <div class="req-line__title">
+                {{ line.support_service.title }}
+              </div>
+            </div>
+
+            <!-- 3. Ожидание -->
+            <div class="req-line__eta">
+              {% if line.support_service.eta %}
+                {{ line.support_service.eta }}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+
+            <!-- 4. Комментарий по услуге -->
+            <div class="req-line__comment">
+              <input type="text"
+                     class="req-line__input"
+                     name="comment_{{ line.id }}"
+                     value="{{ line.comment }}"
+                     placeholder="Комментарий">
+            </div>
+
+            <!-- Крестик удаления услуги -->
+            <a href="{% url 'support_request_line_delete' req.id line.id %}"
+               class="req-line__remove"
+               title="Удалить услугу из заявки">
+              &times;
+            </a>
+          </article>
         {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      </div>
 
-  </section>
+      <!-- Кнопки -->
+      <div class="req__actions">
+        <button type="submit"
+                class="btn btn--primary card__action-btn">
+          Оформить заявку
+        </button>
+
+        <a href="{% url 'delete_request_sql' req.id %}"
+           class="btn btn--outline btn--danger-outline card__action-btn">
+          Удалить заявку
+        </a>
+      </div>
+    </form>
+
+  {% else %}
+    <!-- Если в заявке нет услуг: просто шапка и сообщение -->
+    <div class="req__box">
+      <div class="request-head">
+        <dl class="req-meta">
+          <dt>ID заявки:</dt>
+          <dd>{{ req.id }}</dd>
+
+          <dt>Статус:</dt>
+          <dd>{{ req.get_status_display }}</dd>
+
+          <dt>Дата создания:</dt>
+          <dd>{{ req.created_at|date:"d.m.Y H:i" }}</dd>
+
+          <dt>Создатель:</dt>
+          <dd>{{ req.requester.username|default:"—" }}</dd>
+
+          <dt>Помещение:</dt>
+          <dd>{{ req.room|default:"—" }}</dd>
+        </dl>
+      </div>
+    </div>
+    <p>Строк в заявке пока нет.</p>
   {% endif %}
+
+</section>
 {% endblock %}

@@ -1,88 +1,182 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db import connection, transaction
+from django.utils.timezone import now
+from django.http import HttpResponseNotAllowed
 from django.urls import reverse
+from .models import SupportService, SupportRequest, SupportRequestService
+from .utils import get_current_user
 
-# каталог услуг (как в странице 1)
-ITEMS = [
-    {"id": 1,
-     "img": "img/printer_error.png",
-     "title": "Не работает принтер",
-     "desc": "Устройство не подключается к сети или драйвер не отвечает",
-     "eta": "2 часа"},
-    {"id": 2,
-     "img": "img/email_error.png",
-     "title": "Нет доступа к корпоративной почте",
-     "desc": "Проблемы с подключением к корпоративному почтовому ящику",
-     "eta": "8 часов"},
-    {"id": 3,
-     "img": "img/connection_error.png",
-     "title": "Отсутствует интернет-соединение",
-     "desc": "Проблемы с подключением устройств к сети Интернет", "eta": "6 часов"},
-    {"id": 4,
-     "img": "img/installation_needed.png",
-     "title": "Требуется установка ПО",
-     "desc": "Установка и настройка требуемого программного обеспечения",
-     "eta": "4 часа"},
-]
-
-def _mock_current_request():
-    return {
-        "id": 101,
-        "status": "Черновик",
-        "owner": "Пользователь",
-        "room": "Офис 105",
-        "created": "2025-10-18 12:00",
-        "calc_result": "",
-        "lines": [
-            {
-                "service_id": 1,
-                "title": "Не работает принтер",
-                "eta": "2 часа",
-                "qty": 1,
-                "order": None,
-                "main": False,
-                "comment": "IP-адрес принтера, проверил подключение к сети, перезагрузил",
-            },
-            {
-                "service_id": 3,
-                "title": "Отсутствует интернет-соединение",
-                "eta": "6 часов",
-                "qty": 2,
-                "order": None,
-                "main": False,
-                "comment": "Не работает проводной и беспроводной интернет",
-            },
-        ],
-    }
-
-def _filter_items_by_query(items, q: str):
-    q = (q or "").strip().lower()
-    if not q:
-        return items, ""
-    return [it for it in items if q in it["title"].lower()], q
 
 def support_services(request):
-    filtered, q = _filter_items_by_query(ITEMS, request.GET.get("q"))
+    """Страница каталога услуг."""
+    q = (request.GET.get("q") or "").strip().lower()
 
-    req = _mock_current_request()
+    services = SupportService.objects.filter(is_active=True, is_deleted=False)
+    if q:
+        services = services.filter(title__icontains=q)
+
+    # Ищем черновик текущего пользователя (корзину)
+    current_request = None
+    current_user = get_current_user(request)
+    current_request = (
+        SupportRequest.objects.filter(
+            requester=current_user, status=SupportRequest.Status.DRAFT, is_deleted=False
+        ).first()
+    )
+
     ctx = {
-        "items": filtered,
-        "q": q,  # чтобы значение сохранилось в <input value="{{ q }}">
-        # бейдж показываем на странице 1
-        "badge_count": len(req["lines"]),
-        "badge_url": reverse("support_request", args=[req["id"]]),
+        "items": services,
+        "q": q,
+        "badge_count": (
+            SupportRequestService.objects.filter(support_requests=current_request).count()
+            if current_request
+            else 0
+        ),
+        "badge_url": (
+            reverse("support_request", args=[current_request.id])
+            if current_request
+            else "#"
+        ),
     }
     return render(request, "pages/support_services.html", ctx)
 
+
 def support_service(request, service_id: int):
-    item = next((x for x in ITEMS if x["id"] == service_id), None)
-    if not item:
-        return render(request, "pages/support_service.html", {"not_found": True}, status=404)
-    # на странице 2 бейдж НЕ передаём
+    """Карточка услуги."""
+    item = get_object_or_404(
+        SupportService, pk=service_id, is_active=True, is_deleted=False
+    )
     return render(request, "pages/support_service.html", {"item": item})
 
+
+def add_service_to_request(request, service_id: int):
+    """Добавление услуги в текущую заявку-черновик."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    current_user = get_current_user(request)
+    service = get_object_or_404(
+        SupportService, pk=service_id, is_active=True, is_deleted=False
+    )
+
+    with transaction.atomic():
+        draft, _ = SupportRequest.objects.get_or_create(
+            requester=current_user,
+            status=SupportRequest.Status.DRAFT,
+            is_deleted=False,
+            defaults={"created_at": now()},
+        )
+        SupportRequestService.objects.get_or_create(
+            support_service=service,
+            support_requests=draft,
+            defaults={
+                "qty": 1,
+                "amount": None,
+                "comment": "",
+            }
+        )
+
+    redirect_to = request.POST.get("next") or reverse("support_services")
+    return redirect(redirect_to)
+
+
 def support_request(request, rid: int):
-    req = _mock_current_request()
-    if rid != req["id"]:
-        return render(request, "pages/support_request.html",
-                      {"not_found": True}, status=404)
-    return render(request, "pages/support_request.html", {"req": req})
+    """Текущая заявка (корзина)."""
+    current_user = get_current_user(request)
+    req = get_object_or_404(
+        SupportRequest,
+        id=rid,
+        requester=current_user,
+        is_deleted=False,
+    )
+
+    items = SupportRequestService.objects.filter(support_requests=req).select_related("support_service")
+
+    ctx = {"req": req, "lines": items}
+    return render(request, "pages/support_request.html", ctx)
+
+def support_request_form(request, rid: int):
+    """
+    Оформление заявки:
+    - сохраняем room (кабинет) в самой заявке,
+    - сохраняем comment по каждой строке заявки,
+    - переводим статус из draft в formed.
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    current_user = get_current_user(request)
+    req = get_object_or_404(
+        SupportRequest,
+        id=rid,
+        requester=current_user,
+        is_deleted=False,
+    )
+
+    # Берём все строки заявки
+    lines = SupportRequestService.objects.filter(support_requests=req)
+
+    with transaction.atomic():
+        # ---- room (поле самой заявки) ----
+        room = (request.POST.get("room") or "").strip()
+        if room:
+            req.room = room
+        else:
+            req.room = None
+
+        # ---- comment по каждой строке ----
+        for line in lines:
+            key = f"comment_{line.id}"
+            comment = (request.POST.get(key) or "").strip()
+            line.comment = comment or None
+            line.save(update_fields=["comment"])
+
+        # ---- смена статуса на "сформирован" ----
+        update_fields = ["room"]
+        if req.status == SupportRequest.Status.DRAFT:
+            req.status = SupportRequest.Status.FORMED
+            req.requested_at = now()
+            update_fields.extend(["status", "requested_at"])
+
+        req.save(update_fields=update_fields)
+
+    return redirect("support_request", rid=rid)
+
+
+def support_request_line_delete(request, rid: int, line_id: int):
+    """
+    Удалить одну услугу из заявки.
+    Делаем через GET по ссылке с крестиком и возвращаемся на страницу заявки.
+    """
+    current_user = get_current_user(request)
+    req = get_object_or_404(
+        SupportRequest,
+        id=rid,
+        requester=current_user,
+        is_deleted=False,
+    )
+
+    SupportRequestService.objects.filter(
+        id=line_id,
+        support_requests=req,
+    ).delete()
+
+    return redirect("support_request", rid=rid)
+
+def delete_request_sql(request, rid: int):
+    """
+    Логическое удаление заявки через SQL (без ORM).
+    """
+    current_user = get_current_user(request)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE support_requests
+            SET is_deleted = TRUE,
+                deleted_at = NOW(),
+                status = 'deleted'
+            WHERE id = %s AND requester_id = %s AND status = 'draft'
+            """,
+            [rid, current_user.id],
+        )
+    return render(request, "pages/request_deleted.html", {"rid": rid})
