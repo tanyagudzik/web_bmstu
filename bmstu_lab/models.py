@@ -1,5 +1,58 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
+
+class NewUserManager(UserManager):
+    """Менеджер для пользователя с логином по email."""
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('User must have an email address')
+
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
+
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    """Кастомный пользователь: логин по email."""
+    email = models.EmailField("email адрес", unique=True)
+    # Оставим username как доп. поле, чтобы было удобно искать и не ломать админку/шаблоны
+    username = models.CharField("имя пользователя", max_length=150, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(
+        default=False,
+        verbose_name="Является ли пользователь менеджером?",
+    )
+    is_superuser = models.BooleanField(
+        default=False,
+        verbose_name="Является ли пользователь админом?",
+    )
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']  # при создании суперпользователя попросят ещё и username
+
+    objects = NewUserManager()
+
+    class Meta:
+        verbose_name = "пользователь"
+        verbose_name_plural = "пользователи"
+
+    def __str__(self):
+        return self.email or self.username or f"User {self.pk}"
 
 
 class SupportService(models.Model):
@@ -37,8 +90,22 @@ class SupportRequest(models.Model):
         FINISHED = "finished", "завершён"
         REJECTED = "rejected", "отклонён"
 
-    requester    = models.ForeignKey(User, on_delete=models.PROTECT, related_name="requests", verbose_name="пользователь", null=True,blank=True)  # NO-AUTH
-    engineer     = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True, related_name="assigned_requests", verbose_name="инженер")
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="requests",
+        verbose_name="пользователь",
+        null=True,
+        blank=True,
+    )
+    engineer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="assigned_requests",
+        verbose_name="инженер",
+    )
 
     status       = models.CharField("статус", max_length=50, choices=Status.choices, default=Status.DRAFT)
     created_at   = models.DateTimeField("создано", auto_now_add=True)

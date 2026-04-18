@@ -30,7 +30,7 @@ class SupportRequestAdmin(admin.ModelAdmin):
         "is_deleted",
     )
     list_filter = ("status", "is_deleted")
-    search_fields = ("id", "requester__username", "engineer__username")
+    search_fields = ("id", "requester__email", "requester__username", "engineer__email", "engineer__username")
     inlines = [SupportRequestServiceInline]
 
 

@@ -3,7 +3,6 @@ from django.db import connection, transaction
 from django.utils.timezone import now
 from django.http import HttpResponseNotAllowed
 from django.urls import reverse
-from django.contrib.auth.decorators import login_required
 from .models import SupportService, SupportRequest, SupportRequestService
 from .utils import get_current_user
 
@@ -18,7 +17,7 @@ def support_services(request):
 
     # Ищем черновик текущего пользователя (корзину)
     current_request = None
-    current_user = get_current_user()
+    current_user = get_current_user(request)
     current_request = (
         SupportRequest.objects.filter(
             requester=current_user, status=SupportRequest.Status.DRAFT, is_deleted=False
@@ -55,7 +54,7 @@ def add_service_to_request(request, service_id: int):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
-    current_user = get_current_user()
+    current_user = get_current_user(request)
     service = get_object_or_404(
         SupportService, pk=service_id, is_active=True, is_deleted=False
     )
@@ -67,22 +66,23 @@ def add_service_to_request(request, service_id: int):
             is_deleted=False,
             defaults={"created_at": now()},
         )
-        SupportRequestService.objects.create(
+        SupportRequestService.objects.get_or_create(
             support_service=service,
             support_requests=draft,
-            qty=1,
-            amount=None,
-            comment="",
+            defaults={
+                "qty": 1,
+                "amount": None,
+                "comment": "",
+            }
         )
 
     redirect_to = request.POST.get("next") or reverse("support_services")
     return redirect(redirect_to)
 
 
-@login_required
 def support_request(request, rid: int):
     """Текущая заявка (корзина)."""
-    current_user = get_current_user()
+    current_user = get_current_user(request)
     req = get_object_or_404(
         SupportRequest,
         id=rid,
@@ -95,7 +95,6 @@ def support_request(request, rid: int):
     ctx = {"req": req, "lines": items}
     return render(request, "pages/support_request.html", ctx)
 
-@login_required
 def support_request_form(request, rid: int):
     """
     Оформление заявки:
@@ -106,7 +105,7 @@ def support_request_form(request, rid: int):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
-    current_user = get_current_user()
+    current_user = get_current_user(request)
     req = get_object_or_404(
         SupportRequest,
         id=rid,
@@ -144,13 +143,12 @@ def support_request_form(request, rid: int):
     return redirect("support_request", rid=rid)
 
 
-@login_required
 def support_request_line_delete(request, rid: int, line_id: int):
     """
     Удалить одну услугу из заявки.
     Делаем через GET по ссылке с крестиком и возвращаемся на страницу заявки.
     """
-    current_user = get_current_user()
+    current_user = get_current_user(request)
     req = get_object_or_404(
         SupportRequest,
         id=rid,
@@ -165,12 +163,11 @@ def support_request_line_delete(request, rid: int, line_id: int):
 
     return redirect("support_request", rid=rid)
 
-@login_required
 def delete_request_sql(request, rid: int):
     """
     Логическое удаление заявки через SQL (без ORM).
     """
-    current_user = get_current_user()
+    current_user = get_current_user(request)
     with connection.cursor() as cursor:
         cursor.execute(
             """

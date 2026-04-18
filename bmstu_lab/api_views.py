@@ -1,15 +1,98 @@
 from django.db import transaction
 from django.utils.timezone import now
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from drf_yasg.utils import swagger_auto_schema
+
 import random
 
 from .models import SupportService, SupportRequest, SupportRequestService
-from .serializers import SupportServiceSerializer, SupportRequestSerializer
-from django.contrib.auth import get_user_model
+from .serializers import (
+    UserSerializer,
+    RegisterSerializer,
+    LoginSerializer,
+    SupportServiceSerializer,
+    SupportRequestSerializer,
+)
+
+from .serializers import ServiceImageSerializer
+from django.views.decorators.csrf import csrf_exempt
+from .utils import create_session, delete_session, get_user_by_session_id
+
 
 User = get_user_model()
+
+@swagger_auto_schema(method='post', request_body=RegisterSerializer)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def register_user_api(request):
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"message": "User created"}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+@swagger_auto_schema(method='post', request_body=LoginSerializer)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def login_api(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    if not email or not password:
+        return Response({'detail': 'email and password required'}, status=400)
+
+    user = authenticate(request, username=email, password=password)
+    if user is None:
+        return Response({'detail': 'invalid credentials'}, status=400)
+    if not user.is_active:
+        return Response({'detail': 'user is inactive'}, status=400)
+
+    # РУЧНАЯ СЕССИЯ: uuid -> email в Redis, cookie session_id
+    sid = create_session(user.get_username())
+
+    resp = Response({'detail': 'logged in'}, status=200)
+    resp.set_cookie("session_id", sid)
+    return resp
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def logout_api(request):
+    session_id = request.COOKIES.get("session_id")
+    if session_id:
+        delete_session(session_id)
+
+    resp = Response({'detail': 'logged out'}, status=200)
+    resp.delete_cookie("session_id")
+    return resp
+
+
+def require_user(request):
+    """
+    Проверка авторизации по cookie session_id и Redis.
+    Возвращает (user, None) или (None, Response).
+    """
+    session_id = request.COOKIES.get("session_id")
+    if not session_id:
+        return None, Response({"detail": "not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    user = get_user_by_session_id(session_id)
+    if not user:
+        return None, Response({"detail": "invalid session"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    return user, None
+
+
+def is_manager(user) -> bool:
+    return bool(user and (user.is_staff or user.is_superuser))
 
 # ------------------ ДОМЕН УСЛУГ ------------------
 
@@ -32,9 +115,13 @@ def support_service_api(request, service_id: int):
     return Response(SupportServiceSerializer(s).data)
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def support_service_add_to_request_api(request, service_id: int):
     """POST добавление услуги в текущую заявку-черновик."""
-    # NO-AUTH: user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
     try:
         service = SupportService.objects.get(pk=service_id, is_active=True, is_deleted=False)
     except SupportService.DoesNotExist:
@@ -42,33 +129,28 @@ def support_service_add_to_request_api(request, service_id: int):
 
     with transaction.atomic():
         draft, _ = SupportRequest.objects.get_or_create(
-            requester=None,   # черновик без пользователя NO-AUTH: user
+            requester=user,
             status=SupportRequest.Status.DRAFT,
             is_deleted=False,
-            defaults={'created_at': now()}
+            defaults={'created_at': now()},
         )
-        SupportRequestService.objects.create(
+        SupportRequestService.objects.get_or_create(
             support_service=service,
             support_requests=draft,
-            qty=1,           # qty храним, но в UI не показываем
-            amount=None,     # сумма по ЛР-3 не требуется в UI
-            comment=''
+            defaults={'qty': 1, 'amount': None, 'comment': ''},
         )
+
     return Response({'request_id': draft.id}, status=status.HTTP_201_CREATED)
 
+@swagger_auto_schema(method='post', request_body=SupportServiceSerializer)
 @api_view(['POST'])
 def support_service_create_api(request):
-    """
-    POST создать новую услугу.
-    Пример JSON:
-    {
-      "title": "Новая услуга",
-      "description": "...",
-      "is_active": true,
-      "is_deleted": false,
-      "duration_hours": 2
-    }
-    """
+    user, err = require_user(request)
+    if err:
+        return err
+    if not is_manager(user):
+        return Response({'detail': 'forbidden'}, status=403)
+
     serializer = SupportServiceSerializer(data=request.data)
     if serializer.is_valid():
         service = serializer.save()
@@ -76,16 +158,15 @@ def support_service_create_api(request):
                         status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@swagger_auto_schema(method='put', request_body=ServiceImageSerializer)
 @api_view(['PUT'])
 def support_service_upload_image_api(request, service_id: int):
-    """
-    PUT обновить адрес картинки услуги.
-    Ожидает JSON:
-    {
-      "img_url": "/static/img/printer.png"
-      или "https://example.com/img/printer.png"
-    }
-    """
+    user, err = require_user(request)
+    if err:
+        return err
+    if not is_manager(user):
+        return Response({'detail': 'forbidden'}, status=403)
+
     try:
         service = SupportService.objects.get(
             pk=service_id,
@@ -102,13 +183,8 @@ def support_service_upload_image_api(request, service_id: int):
     service.img_url = img_url
     service.save(update_fields=['img_url'])
 
-    # можно вернуть только нужные поля
     return Response(
-        {
-            'id': service.id,
-            'title': service.title,
-            'img_url': service.img_url,
-        },
+        {'id': service.id, 'title': service.title, 'img_url': service.img_url},
         status=status.HTTP_200_OK
     )
 
@@ -120,9 +196,12 @@ def support_request_cart_api(request):
     GET иконки корзины (без входных параметров):
     возвращает id черновика и количество услуг в нём.
     """
-    # NO-AUTH: user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
     draft = SupportRequest.objects.filter(
-        requester=None,   # черновик без пользователя NO-AUTH: user
+        requester=user,
         status=SupportRequest.Status.DRAFT,
         is_deleted=False
     ).first()
@@ -134,11 +213,17 @@ def support_request_cart_api(request):
 @api_view(['GET'])
 def support_request_api(request, rid: int):
     """GET одна заявка (+ её услуги). Удалённые не возвращаем."""
-    # user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
     try:
-        req = SupportRequest.objects.get(id=rid, is_deleted=False) # + requester=user
+        req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
+    if not is_manager(user) and req.requester_id != user.id:
+        return Response({'detail': 'forbidden'}, status=403)
+
     return Response(SupportRequestSerializer(req).data)
 
 @api_view(['PUT'])
@@ -147,11 +232,17 @@ def support_request_form_api(request, rid: int):
     PUT сформировать заявку (создатель = фиксированный пользователь).
     Ставит статус 'formed' и requested_at.
     """
-    # user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
     try:
-        req = SupportRequest.objects.get(id=rid, is_deleted=False) # + requester=user
+        req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
+
+    if not is_manager(user) and req.requester_id != user.id:
+        return Response({'detail': 'forbidden'}, status=403)
 
     if req.status != SupportRequest.Status.DRAFT:
         return Response({'detail': 'only draft can be formed'}, status=400)
@@ -165,11 +256,18 @@ def support_request_form_api(request, rid: int):
 def support_request_finish_api(request, rid: int):
     """
     PUT завершить заявку (модератором).
-    'результат' это случайная галочка в М-М.
+    'результат'это случайная галочка в М-М.
     """
-    # user = get_current_user()
+
+    user, err = require_user(request)
+    if err:
+        return err
+
+    if not is_manager(user):
+        return Response({'detail': 'forbidden'}, status=403)
+
     try:
-        req = SupportRequest.objects.get(id=rid, is_deleted=False) # + requester=user
+        req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
 
@@ -189,9 +287,15 @@ def support_request_finish_api(request, rid: int):
 @api_view(['PUT'])
 def support_request_reject_api(request, rid: int):
     """PUT отклонить заявку (модератором)."""
-   # user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
+    if not is_manager(user):
+        return Response({'detail': 'forbidden'}, status=403)
+
     try:
-        req = SupportRequest.objects.get(id=rid, is_deleted=False) # + requester=user
+        req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
 
@@ -206,9 +310,18 @@ def support_request_reject_api(request, rid: int):
 @api_view(['DELETE'])
 def support_request_delete_api(request, rid: int):
     """DELETE логическое удаление черновика."""
-    # user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
     updated = (SupportRequest.objects
-               .filter(id=rid, status=SupportRequest.Status.DRAFT, is_deleted=False) # + requester=user
+               .filter(
+                   id=rid,
+                   status=SupportRequest.Status.DRAFT,
+                   is_deleted=False,
+                   requester=user
+               )
+
                .update(is_deleted=True, deleted_at=now(), status=SupportRequest.Status.DELETED))
     if not updated:
         return Response({'detail': 'not allowed or not found'}, status=400)
@@ -222,11 +335,18 @@ def support_requests_list_api(request):
     ?date_from=YYYY-MM-DD  (по requested_at)
     ?date_to=YYYY-MM-DD
     """
+    user, err = require_user(request)
+    if err:
+        return err
+
     status_param = request.GET.get('status')
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
 
     qs = SupportRequest.objects.filter(is_deleted=False)
+
+    if not is_manager(user):
+        qs = qs.filter(requester=user)
 
     if status_param:
         qs = qs.filter(status=status_param)
@@ -249,10 +369,17 @@ def support_request_update_api(request, rid: int):
       "comment": "Срочно"
     }
     """
+    user, err = require_user(request)
+    if err:
+        return err
+
     try:
         req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
+
+    if not is_manager(user) and req.requester_id != user.id:
+        return Response({'detail': 'forbidden'}, status=403)
 
     serializer = SupportRequestSerializer(req, data=request.data, partial=True)
     if serializer.is_valid():
@@ -260,39 +387,24 @@ def support_request_update_api(request, rid: int):
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
 
-@api_view(['POST'])
-def register_user_api(request):
-    """
-    POST регистрация нового пользователя.
-    {
-      "username": "user1",
-      "password": "pass123",
-      "email": "u1@example.com"
-    }
-    """
-    username = request.data.get('username')
-    password = request.data.get('password')
-    email = request.data.get('email', '')
-
-    if not username or not password:
-        return Response({'detail': 'username and password required'}, status=400)
-
-    if User.objects.filter(username=username).exists():
-        return Response({'detail': 'username already exists'}, status=400)
-
-    user = User.objects.create_user(username=username, password=password, email=email)
-    return Response({'id': user.id, 'username': user.username}, status=201)
 
 # ------------------ ДОМЕН М-М (строки заявки) ------------------
 
 @api_view(['DELETE'])
 def support_request_line_delete_api(request, rid: int, line_id: int):
     """DELETE строку из заявки (без удаления самой заявки)."""
-    # user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
     try:
-        req = SupportRequest.objects.get(id=rid, is_deleted=False) # + requester=user
+        req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
+
+    if not is_manager(user) and req.requester_id != user.id:
+        return Response({'detail': 'forbidden'}, status=403)
+
     deleted, _ = SupportRequestService.objects.filter(
         id=line_id,
         support_requests=req
@@ -304,11 +416,17 @@ def support_request_line_update_api(request, rid: int, line_id: int):
     """
     PUT изменить значения в М-М: по замечанию оставляем comment.
     """
-    # user = get_current_user()
+    user, err = require_user(request)
+    if err:
+        return err
+
     try:
-        req = SupportRequest.objects.get(id=rid, is_deleted=False) # + requester=user
+        req = SupportRequest.objects.get(id=rid, is_deleted=False)
     except SupportRequest.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
+
+    if not is_manager(user) and req.requester_id != user.id:
+        return Response({'detail': 'forbidden'}, status=403)
 
     try:
         line = SupportRequestService.objects.get(id=line_id, support_requests=req)

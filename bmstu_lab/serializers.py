@@ -1,5 +1,35 @@
 from rest_framework import serializers
-from .models import SupportService, SupportRequest, SupportRequestService
+from .models import CustomUser, SupportService, SupportRequest, SupportRequestService
+
+class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'username', 'password', 'is_staff', 'is_superuser']
+        extra_kwargs = {
+            'is_staff': {'required': False},
+            'is_superuser': {'required': False},
+        }
+
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(
+            email=validated_data['email'],
+            username=validated_data.get('username', ''),
+            password=validated_data['password'],
+            is_staff=validated_data.get('is_staff', False),
+            is_superuser=validated_data.get('is_superuser', False),
+        )
+        return user
+
+class RegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
 
 class SupportServiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,3 +55,6 @@ class SupportRequestSerializer(serializers.ModelSerializer):
         model = SupportRequest
         # системные поля минимально: даты + room
         fields = ['id', 'created_at', 'requested_at', 'finished_at', 'room', 'lines']
+
+class ServiceImageSerializer(serializers.Serializer):
+    img_url = serializers.CharField()
