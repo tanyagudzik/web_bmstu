@@ -15,6 +15,15 @@ function AppNavbar() {
 
       <h1 className="site-topbar__title">Удаленная поддержка</h1>
 
+      <nav style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <Link to="/support_services" style={{ color: 'white', textDecoration: 'none' }}>
+          Услуги
+        </Link>
+        <Link to="/kb" style={{ color: 'white', textDecoration: 'none' }}>
+          База знаний
+        </Link>
+      </nav>
+
       <div className="auth-box">
         <button type="button" className="btn-blue">
           Войти

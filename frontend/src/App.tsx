@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import ServicesPage from './pages/ServicesPage'
 import ServicePage from './pages/ServicePage'
 import RequestPage from './pages/RequestPage'
+import KBSearchPage from './pages/KBSearchPage'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/support_services" element={<ServicesPage />} />
         <Route path="/support_service/:id" element={<ServicePage />} />
         <Route path="/support_request" element={<RequestPage />} />
+        <Route path="/kb" element={<KBSearchPage />} />
       </Routes>
     </BrowserRouter>
   )

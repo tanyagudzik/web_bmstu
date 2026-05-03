@@ -157,3 +157,44 @@ class SupportRequestService(models.Model):
 
     def __str__(self):
         return f"req={self.support_requests_id} service={self.support_service_id}"
+
+class KBArticle(models.Model):
+    """Статья базы знаний техподдержки."""
+
+    class Category(models.TextChoices):
+        NETWORK    = "network",    "Сеть и VPN"
+        PRINTER    = "printer",    "Принтеры и сканеры"
+        SOFTWARE   = "software",   "Установка ПО"
+        HARDWARE   = "hardware",   "Оборудование"
+        EMAIL      = "email",      "Почта и календарь"
+        ACCESS     = "access",     "Доступы и учётные записи"
+        OTHER      = "other",      "Прочее"
+
+    title       = models.CharField("заголовок", max_length=300)
+    content     = models.TextField("содержание")
+    description = models.TextField(
+        "описание (англ., для SigLIP)",
+        help_text="English description for SigLIP embedding. Required.",
+    )
+    tags        = models.CharField("теги", max_length=500, blank=True)
+    category    = models.CharField(
+        "категория", max_length=50,
+        choices=Category.choices, default=Category.OTHER,
+    )
+    img_url     = models.TextField("URL скриншота", null=True, blank=True)
+    is_active   = models.BooleanField("активна", default=True)
+    created_at  = models.DateTimeField("создано", auto_now_add=True)
+    updated_at  = models.DateTimeField("обновлено", auto_now=True)
+    confluence_page_id = models.CharField(
+        "ID страницы Confluence", max_length=50,
+        null=True, blank=True, unique=True
+    )
+
+    class Meta:
+        db_table = "kb_articles"
+        verbose_name = "статья БЗ"
+        verbose_name_plural = "статьи БЗ"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"[{self.get_category_display()}] {self.title}"

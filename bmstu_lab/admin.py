@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import SupportService, SupportRequest, SupportRequestService
-
+from .models import SupportService, SupportRequest, SupportRequestService, KBArticle
 
 @admin.register(SupportService)
 class SupportServiceAdmin(admin.ModelAdmin):
@@ -32,5 +31,12 @@ class SupportRequestAdmin(admin.ModelAdmin):
     list_filter = ("status", "is_deleted")
     search_fields = ("id", "requester__email", "requester__username", "engineer__email", "engineer__username")
     inlines = [SupportRequestServiceInline]
+
+
+@admin.register(KBArticle)
+class KBArticleAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "category", "is_active", "created_at")
+    list_filter = ("category", "is_active")
+    search_fields = ("title", "content", "tags")
 
 

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, SupportService, SupportRequest, SupportRequestService
+from .models import CustomUser, SupportService, SupportRequest, SupportRequestService, KBArticle
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -58,3 +58,9 @@ class SupportRequestSerializer(serializers.ModelSerializer):
 
 class ServiceImageSerializer(serializers.Serializer):
     img_url = serializers.CharField()
+
+class KBArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KBArticle
+        fields = ['id', 'title', 'content', 'description', 'tags',
+                  'category', 'img_url', 'is_active', 'created_at']

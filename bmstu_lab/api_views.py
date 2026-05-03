@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import transaction, models
 from django.utils.timezone import now
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
@@ -9,13 +9,14 @@ from drf_yasg.utils import swagger_auto_schema
 
 import random
 
-from .models import SupportService, SupportRequest, SupportRequestService
+from .models import SupportService, SupportRequest, SupportRequestService, KBArticle
 from .serializers import (
     UserSerializer,
     RegisterSerializer,
     LoginSerializer,
     SupportServiceSerializer,
     SupportRequestSerializer,
+    KBArticleSerializer,
 )
 
 from .serializers import ServiceImageSerializer
@@ -437,3 +438,31 @@ def support_request_line_update_api(request, rid: int, line_id: int):
     line.comment = comment
     line.save(update_fields=['comment'])
     return Response({'id': line.id, 'comment': line.comment})
+
+# ------------------ KBArticleSerializer ------------------
+
+@api_view(['GET'])
+def kb_articles_api(request):
+    """GET список статей БЗ с фильтром ?q= и ?category=."""
+    q = (request.GET.get('q') or '').strip()
+    category = (request.GET.get('category') or '').strip()
+    qs = KBArticle.objects.filter(is_active=True)
+    if q:
+        qs = qs.filter(
+            models.Q(title__icontains=q) |
+            models.Q(content__icontains=q) |
+            models.Q(tags__icontains=q)
+        )
+    if category:
+        qs = qs.filter(category=category)
+    return Response(KBArticleSerializer(qs, many=True).data)
+
+
+@api_view(['GET'])
+def kb_article_api(request, article_id: int):
+    """GET одна статья БЗ."""
+    try:
+        a = KBArticle.objects.get(pk=article_id, is_active=True)
+    except KBArticle.DoesNotExist:
+        return Response({'detail': 'not found'}, status=404)
+    return Response(KBArticleSerializer(a).data)

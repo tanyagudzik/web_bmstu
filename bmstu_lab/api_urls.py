@@ -28,4 +28,8 @@ urlpatterns = [
     # М-М (строки заявки)
     path('api/support_request/<int:rid>/line/<int:line_id>', v.support_request_line_update_api, name='api_support_request_line_update'),
     path('api/support_request/<int:rid>/line/<int:line_id>/delete', v.support_request_line_delete_api, name='api_support_request_line_delete'),
+
+    # БАЗА ЗНАНИЙ
+    path('api/kb/articles', v.kb_articles_api, name='api_kb_articles'),
+    path('api/kb/article/<int:article_id>', v.kb_article_api, name='api_kb_article'),
 ]
