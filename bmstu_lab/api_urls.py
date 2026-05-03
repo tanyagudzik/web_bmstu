@@ -32,4 +32,10 @@ urlpatterns = [
     # БАЗА ЗНАНИЙ
     path('api/kb/articles', v.kb_articles_api, name='api_kb_articles'),
     path('api/kb/article/<int:article_id>', v.kb_article_api, name='api_kb_article'),
+
+    # ПОИСК ПО БЗ (Redis Vector Search)
+    path('api/kb/search', v.kb_search_api, name='api_kb_search'),
+
+    # МЕТРИКИ КЛИЕНТА (Pushgateway)
+    path('api/metrics', v.metrics_ingest_api, name='api_metrics'),
 ]

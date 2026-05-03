@@ -1,5 +1,9 @@
 from rest_framework import serializers
-from .models import CustomUser, SupportService, SupportRequest, SupportRequestService, KBArticle
+from .models import (
+    CustomUser, SupportService, SupportRequest,
+    SupportRequestService, KBArticle, KBArticleImage,
+)
+
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -22,19 +26,23 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
 
 class SupportServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupportService
         fields = ['id', 'title', 'description', 'eta', 'img_url', 'is_active']
+
 
 class SupportRequestLineSerializer(serializers.ModelSerializer):
     service_id   = serializers.IntegerField(source='support_service.id', read_only=True)
@@ -44,23 +52,35 @@ class SupportRequestLineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SupportRequestService
-        # qty/amount в ЛР-3 наружу не показываем
         fields = ['id', 'service_id', 'service_name', 'eta', 'img_url', 'comment', 'ok']
 
+
 class SupportRequestSerializer(serializers.ModelSerializer):
-    # список строк заявки
-    lines = SupportRequestLineSerializer(source='supportrequestservice_set', many=True, read_only=True)
+    lines = SupportRequestLineSerializer(
+        source='supportrequestservice_set', many=True, read_only=True
+    )
 
     class Meta:
         model = SupportRequest
-        # системные поля минимально: даты + room
         fields = ['id', 'created_at', 'requested_at', 'finished_at', 'room', 'lines']
+
 
 class ServiceImageSerializer(serializers.Serializer):
     img_url = serializers.CharField()
 
+
+class KBArticleImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KBArticleImage
+        fields = ['id', 'image_url', 'alt_text', 'sort_order']
+
+
 class KBArticleSerializer(serializers.ModelSerializer):
+    images = KBArticleImageSerializer(many=True, read_only=True)
+
     class Meta:
         model = KBArticle
-        fields = ['id', 'title', 'content', 'description', 'tags',
-                  'category', 'img_url', 'is_active', 'created_at']
+        fields = [
+            'id', 'title', 'content', 'description', 'tags',
+            'category', 'img_url', 'is_active', 'created_at', 'images',
+        ]

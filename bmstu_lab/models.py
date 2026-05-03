@@ -198,3 +198,26 @@ class KBArticle(models.Model):
 
     def __str__(self):
         return f"[{self.get_category_display()}] {self.title}"
+
+class KBArticleImage(models.Model):
+    """Изображение, привязанное к статье БЗ."""
+    article = models.ForeignKey(
+        KBArticle,
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name="статья",
+    )
+    image_url = models.TextField("URL изображения")
+    alt_text = models.CharField(
+        "alt / описание", max_length=500, blank=True,
+    )
+    sort_order = models.PositiveIntegerField("порядок", default=0)
+
+    class Meta:
+        db_table = "kb_article_images"
+        verbose_name = "изображение статьи БЗ"
+        verbose_name_plural = "изображения статей БЗ"
+        ordering = ["article_id", "sort_order"]
+
+    def __str__(self):
+        return f"Image #{self.pk} → Article #{self.article_id}"

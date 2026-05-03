@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
+from .kb_indexer import search_similar
 
 import random
 
@@ -466,3 +467,100 @@ def kb_article_api(request, article_id: int):
     except KBArticle.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
     return Response(KBArticleSerializer(a).data)
+
+# ------------------ API эндпоинт поиска ------------------
+
+@api_view(['GET'])
+def kb_search_api(request):
+    """
+    GET /api/kb/search/?q=текст запроса&top_k=5
+    Семантический поиск по базе знаний через Redis Vector Search.
+    """
+    q = (request.GET.get('q') or '').strip()
+    if not q:
+        return Response({'detail': 'query parameter q is required'}, status=400)
+
+    top_k = int(request.GET.get('top_k', 5))
+    top_k = min(top_k, 20)
+
+    try:
+        results = search_similar(q, top_k=top_k)
+    except Exception as e:
+        # Fallback на текстовый поиск если Redis недоступен
+        from .models import KBArticle
+        qs = KBArticle.objects.filter(
+            is_active=True
+        ).filter(
+            models.Q(title__icontains=q) |
+            models.Q(content__icontains=q) |
+            models.Q(tags__icontains=q)
+        )[:top_k]
+        results = [
+            {
+                "text": a.content[:500],
+                "article_id": a.id,
+                "article_title": a.title,
+                "category": a.category,
+                "chunk_index": 0,
+                "score": 0.0,
+            }
+            for a in qs
+        ]
+
+    return Response({"query": q, "results": results})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def metrics_ingest_api(request):
+    """
+    POST /api/metrics/
+    Приём клиентских метрик (latency агентов, faithfulness) → Pushgateway.
+    """
+    import time
+    try:
+        from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+
+        registry = CollectorRegistry()
+        data = request.data
+
+        # Метрики агентов
+        for agent_name in ['context', 'ranking', 'generation', 'validation']:
+            key = f"agent_{agent_name}_ms"
+            if key in data:
+                g = Gauge(
+                    f'webllm_agent_{agent_name}_latency_ms',
+                    f'Latency of {agent_name} agent in ms',
+                    registry=registry,
+                )
+                g.set(float(data[key]))
+
+        # Общее время
+        if 'total_ms' in data:
+            g = Gauge('webllm_total_latency_ms', 'Total RAG pipeline latency',
+                      registry=registry)
+            g.set(float(data['total_ms']))
+
+        # Faithfulness
+        if 'faithful' in data:
+            g = Gauge('webllm_response_faithful', 'Whether response was faithful (1/0)',
+                      registry=registry)
+            g.set(1.0 if data['faithful'] else 0.0)
+
+        # Model name как label
+        if 'model' in data:
+            g = Gauge('webllm_model_info', 'Current model',
+                      labelnames=['model_name'], registry=registry)
+            g.labels(model_name=data['model']).set(1)
+
+        push_to_gateway(
+            'pushgateway:9091', job='webllm_client',
+            registry=registry,
+        )
+
+        return Response({'status': 'ok'})
+
+    except Exception as e:
+        # Не падаем, если Pushgateway недоступен
+        return Response({'status': 'ok', 'warning': str(e)})

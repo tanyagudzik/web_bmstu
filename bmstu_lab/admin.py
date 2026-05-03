@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SupportService, SupportRequest, SupportRequestService, KBArticle
+from .models import SupportService, SupportRequest, SupportRequestService, KBArticle, KBArticleImage
 
 @admin.register(SupportService)
 class SupportServiceAdmin(admin.ModelAdmin):
@@ -33,10 +33,17 @@ class SupportRequestAdmin(admin.ModelAdmin):
     inlines = [SupportRequestServiceInline]
 
 
+class KBArticleImageInline(admin.TabularInline):
+    model = KBArticleImage
+    extra = 1
+    fields = ('image_url', 'alt_text', 'sort_order')
+
+
 @admin.register(KBArticle)
 class KBArticleAdmin(admin.ModelAdmin):
     list_display = ("id", "title", "category", "is_active", "created_at")
     list_filter = ("category", "is_active")
     search_fields = ("title", "content", "tags")
+    inlines = [KBArticleImageInline]
 
 
