@@ -9,3 +9,4 @@ beautifulsoup4>=4.12
 requests>=2.31
 django-prometheus>=2.3
 numpy>=1.26
+prometheus-client

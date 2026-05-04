@@ -10,6 +10,114 @@
  * ---------------------------------------------------------------
  */
 
+export interface KBArticleImage {
+  /** ID */
+  id?: number;
+  /**
+   * URL изображения
+   * @minLength 1
+   */
+  image_url: string;
+  /**
+   * Alt / описание
+   * @maxLength 500
+   */
+  alt_text?: string;
+  /**
+   * Порядок
+   * @min 0
+   * @max 2147483647
+   */
+  sort_order?: number;
+}
+
+export interface KBArticle {
+  /** ID */
+  id?: number;
+  /**
+   * Заголовок
+   * @minLength 1
+   * @maxLength 300
+   */
+  title: string;
+  /**
+   * Содержание
+   * @minLength 1
+   */
+  content: string;
+  /**
+   * Описание (англ., для SigLIP)
+   * English description for SigLIP embedding. Required.
+   * @minLength 1
+   */
+  description: string;
+  /**
+   * Теги
+   * @maxLength 500
+   */
+  tags?: string;
+  /** Категория */
+  category?:
+    | "network"
+    | "printer"
+    | "software"
+    | "hardware"
+    | "email"
+    | "access"
+    | "other";
+  /** URL скриншота */
+  img_url?: string | null;
+  /** Активна */
+  is_active?: boolean;
+  /**
+   * Создано
+   * @format date-time
+   */
+  created_at?: string;
+  images?: KBArticleImage[];
+}
+
+export interface Message {
+  /**
+   * Detail
+   * @minLength 1
+   */
+  detail: string;
+}
+
+export interface KBSearchResult {
+  /**
+   * Text
+   * @minLength 1
+   */
+  text: string;
+  /** Article id */
+  article_id: number;
+  /**
+   * Article title
+   * @minLength 1
+   */
+  article_title: string;
+  /**
+   * Category
+   * @minLength 1
+   */
+  category: string;
+  /** Chunk index */
+  chunk_index: number;
+  /** Score */
+  score: number;
+}
+
+export interface KBSearchResponse {
+  /**
+   * Query
+   * @minLength 1
+   */
+  query: string;
+  results: KBSearchResult[];
+}
+
 export interface Login {
   /**
    * Email
@@ -22,6 +130,39 @@ export interface Login {
    * @minLength 1
    */
   password: string;
+}
+
+export interface MetricsIngest {
+  /** Agent context ms */
+  agent_context_ms?: number;
+  /** Agent ranking ms */
+  agent_ranking_ms?: number;
+  /** Agent generation ms */
+  agent_generation_ms?: number;
+  /** Agent validation ms */
+  agent_validation_ms?: number;
+  /** Total ms */
+  total_ms?: number;
+  /** Faithful */
+  faithful?: boolean;
+  /**
+   * Model
+   * @minLength 1
+   */
+  model?: string;
+}
+
+export interface MetricsResponse {
+  /**
+   * Status
+   * @minLength 1
+   */
+  status: string;
+  /**
+   * Warning
+   * @minLength 1
+   */
+  warning?: string;
 }
 
 export interface Register {
@@ -43,12 +184,147 @@ export interface Register {
   password: string;
 }
 
-export interface ServiceImage {
+export interface CartResponse {
+  /** Request id */
+  request_id?: number | null;
+  /** Count */
+  count: number;
+}
+
+export interface SupportRequestLine {
+  /** ID */
+  id?: number;
+  /** Service id */
+  service_id?: number;
+  /**
+   * Service name
+   * @minLength 1
+   */
+  service_name?: string;
+  /**
+   * Eta
+   * @minLength 1
+   */
+  eta?: string;
   /**
    * Img url
    * @minLength 1
    */
-  img_url: string;
+  img_url?: string;
+  /** Комментарий */
+  comment?: string | null;
+  /** Галочка */
+  ok?: boolean | null;
+}
+
+export interface SupportRequest {
+  /** ID */
+  id?: number;
+  /**
+   * Status
+   * @minLength 1
+   */
+  status?: string;
+  /**
+   * Requester
+   * @format email
+   * @minLength 1
+   */
+  requester?: string;
+  /**
+   * Engineer
+   * @format email
+   * @minLength 1
+   */
+  engineer?: string;
+  /**
+   * Создано
+   * @format date-time
+   */
+  created_at?: string;
+  /**
+   * Дата формирования
+   * @format date-time
+   */
+  requested_at?: string | null;
+  /**
+   * Дата завершения
+   * @format date-time
+   */
+  finished_at?: string | null;
+  /**
+   * Кабинет
+   * @maxLength 50
+   */
+  room?: string | null;
+  /** Count ok */
+  count_ok?: string;
+  lines?: SupportRequestLine[];
+}
+
+export interface FinishResponse {
+  /**
+   * Status
+   * @minLength 1
+   */
+  status: string;
+  /**
+   * Finished at
+   * @format date-time
+   */
+  finished_at: string;
+}
+
+export interface FormResponse {
+  /**
+   * Status
+   * @minLength 1
+   */
+  status: string;
+  /**
+   * Requested at
+   * @format date-time
+   */
+  requested_at: string;
+}
+
+export interface RequestLineUpdate {
+  /**
+   * Comment
+   * @minLength 1
+   */
+  comment?: string;
+}
+
+export interface LineUpdateResponse {
+  /** Id */
+  id: number;
+  /**
+   * Comment
+   * @minLength 1
+   */
+  comment: string;
+}
+
+export interface RejectResponse {
+  /**
+   * Status
+   * @minLength 1
+   */
+  status: string;
+  /**
+   * Finished at
+   * @format date-time
+   */
+  finished_at: string;
+}
+
+export interface SupportRequestUpdate {
+  /**
+   * Room
+   * @minLength 1
+   */
+  room?: string;
 }
 
 export interface SupportService {
@@ -71,6 +347,34 @@ export interface SupportService {
   img_url?: string | null;
   /** Активна */
   is_active?: boolean;
+}
+
+export interface AddToRequestResponse {
+  /** Request id */
+  request_id: number;
+}
+
+export interface ServiceImage {
+  /**
+   * Img url
+   * @minLength 1
+   */
+  img_url: string;
+}
+
+export interface ServiceImageResponse {
+  /** Id */
+  id: number;
+  /**
+   * Title
+   * @minLength 1
+   */
+  title: string;
+  /**
+   * Img url
+   * @minLength 1
+   */
+  img_url: string;
 }
 
 import type {
@@ -271,10 +575,11 @@ export class Api<
      * @secure
      */
     kbArticleRead: (articleId: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<KBArticle, Message>({
         path: `/kb/article/${articleId}`,
         method: "GET",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -286,11 +591,21 @@ export class Api<
      * @request GET:/kb/articles
      * @secure
      */
-    kbArticlesList: (params: RequestParams = {}) =>
-      this.request<void, any>({
+    kbArticlesList: (
+      query?: {
+        /** Поиск по заголовку, содержанию, тегам */
+        q?: string;
+        /** Фильтр по категории */
+        category?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<KBArticle[], any>({
         path: `/kb/articles`,
         method: "GET",
+        query: query,
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -302,11 +617,21 @@ export class Api<
      * @request GET:/kb/search
      * @secure
      */
-    kbSearchList: (params: RequestParams = {}) =>
-      this.request<void, any>({
+    kbSearchList: (
+      query: {
+        /** Текст запроса для семантического поиска */
+        q: string;
+        /** Количество результатов (макс. 20) */
+        top_k?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<KBSearchResponse, Message>({
         path: `/kb/search`,
         method: "GET",
+        query: query,
         secure: true,
+        format: "json",
         ...params,
       }),
   };
@@ -320,7 +645,7 @@ export class Api<
      * @secure
      */
     loginCreate: (data: Login, params: RequestParams = {}) =>
-      this.request<Login, any>({
+      this.request<Message, Message>({
         path: `/login`,
         method: "POST",
         body: data,
@@ -340,10 +665,11 @@ export class Api<
      * @secure
      */
     logoutCreate: (params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<Message, any>({
         path: `/logout`,
         method: "POST",
         secure: true,
+        format: "json",
         ...params,
       }),
   };
@@ -356,11 +682,14 @@ export class Api<
      * @request POST:/metrics
      * @secure
      */
-    metricsCreate: (params: RequestParams = {}) =>
-      this.request<void, any>({
+    metricsCreate: (data: MetricsIngest, params: RequestParams = {}) =>
+      this.request<MetricsResponse, any>({
         path: `/metrics`,
         method: "POST",
+        body: data,
         secure: true,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
   };
@@ -374,7 +703,7 @@ export class Api<
      * @secure
      */
     registerCreate: (data: Register, params: RequestParams = {}) =>
-      this.request<Register, any>({
+      this.request<Message, Message>({
         path: `/register`,
         method: "POST",
         body: data,
@@ -394,10 +723,11 @@ export class Api<
      * @secure
      */
     supportRequestCartList: (params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<CartResponse, Message>({
         path: `/support_request/cart`,
         method: "GET",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -410,10 +740,11 @@ export class Api<
      * @secure
      */
     supportRequestRead: (rid: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<SupportRequest, Message>({
         path: `/support_request/${rid}`,
         method: "GET",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -426,7 +757,7 @@ export class Api<
      * @secure
      */
     supportRequestDeleteDelete: (rid: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<void, Message>({
         path: `/support_request/${rid}/delete`,
         method: "DELETE",
         secure: true,
@@ -442,10 +773,11 @@ export class Api<
      * @secure
      */
     supportRequestFinishUpdate: (rid: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<FinishResponse, Message>({
         path: `/support_request/${rid}/finish`,
         method: "PUT",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -458,10 +790,11 @@ export class Api<
      * @secure
      */
     supportRequestFormUpdate: (rid: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<FormResponse, Message>({
         path: `/support_request/${rid}/form`,
         method: "PUT",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -476,12 +809,16 @@ export class Api<
     supportRequestLineUpdate: (
       rid: string,
       lineId: string,
+      data: RequestLineUpdate,
       params: RequestParams = {},
     ) =>
-      this.request<void, any>({
+      this.request<LineUpdateResponse, Message>({
         path: `/support_request/${rid}/line/${lineId}`,
         method: "PUT",
+        body: data,
         secure: true,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
 
@@ -498,7 +835,7 @@ export class Api<
       lineId: string,
       params: RequestParams = {},
     ) =>
-      this.request<void, any>({
+      this.request<void, Message>({
         path: `/support_request/${rid}/line/${lineId}/delete`,
         method: "DELETE",
         secure: true,
@@ -514,26 +851,34 @@ export class Api<
      * @secure
      */
     supportRequestRejectUpdate: (rid: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<RejectResponse, Message>({
         path: `/support_request/${rid}/reject`,
         method: "PUT",
         secure: true,
+        format: "json",
         ...params,
       }),
 
     /**
-     * @description PUT изменить поля заявки (комнату, описание и т.п.). Пример JSON: { "room": "207", "comment": "Срочно" }
+     * @description PUT изменить поля заявки (кабинет). Пример JSON: { "room": "207" }
      *
      * @tags support_request
      * @name SupportRequestUpdateUpdate
      * @request PUT:/support_request/{rid}/update
      * @secure
      */
-    supportRequestUpdateUpdate: (rid: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+    supportRequestUpdateUpdate: (
+      rid: string,
+      data: SupportRequestUpdate,
+      params: RequestParams = {},
+    ) =>
+      this.request<SupportRequest, Message>({
         path: `/support_request/${rid}/update`,
         method: "PUT",
+        body: data,
         secure: true,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
   };
@@ -546,11 +891,23 @@ export class Api<
      * @request GET:/support_requests
      * @secure
      */
-    supportRequestsList: (params: RequestParams = {}) =>
-      this.request<void, any>({
+    supportRequestsList: (
+      query?: {
+        /** Фильтр по статусу: formed|finished|rejected|draft */
+        status?: string;
+        /** Дата от (YYYY-MM-DD) */
+        date_from?: string;
+        /** Дата до (YYYY-MM-DD) */
+        date_to?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<SupportRequest[], Message>({
         path: `/support_requests`,
         method: "GET",
+        query: query,
         secure: true,
+        format: "json",
         ...params,
       }),
   };
@@ -564,10 +921,11 @@ export class Api<
      * @secure
      */
     supportServiceRead: (serviceId: string, params: RequestParams = {}) =>
-      this.request<void, any>({
+      this.request<SupportService, Message>({
         path: `/support_service/${serviceId}`,
         method: "GET",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -583,10 +941,11 @@ export class Api<
       serviceId: string,
       params: RequestParams = {},
     ) =>
-      this.request<void, any>({
+      this.request<AddToRequestResponse, Message>({
         path: `/support_service/${serviceId}/add_to_request`,
         method: "POST",
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -603,7 +962,7 @@ export class Api<
       data: ServiceImage,
       params: RequestParams = {},
     ) =>
-      this.request<ServiceImage, any>({
+      this.request<ServiceImageResponse, Message>({
         path: `/support_service/${serviceId}/image`,
         method: "PUT",
         body: data,
@@ -622,11 +981,19 @@ export class Api<
      * @request GET:/support_services
      * @secure
      */
-    supportServicesList: (params: RequestParams = {}) =>
-      this.request<void, any>({
+    supportServicesList: (
+      query?: {
+        /** Фильтр по названию услуги */
+        q?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<SupportService[], any>({
         path: `/support_services`,
         method: "GET",
+        query: query,
         secure: true,
+        format: "json",
         ...params,
       }),
 
@@ -642,7 +1009,7 @@ export class Api<
       data: SupportService,
       params: RequestParams = {},
     ) =>
-      this.request<SupportService, any>({
+      this.request<SupportService, Message>({
         path: `/support_services/create`,
         method: "POST",
         body: data,

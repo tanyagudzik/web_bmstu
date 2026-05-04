@@ -6,41 +6,61 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .kb_indexer import search_similar
 
 import random
 
 from .models import SupportService, SupportRequest, SupportRequestService, KBArticle
 from .serializers import (
-    UserSerializer,
     RegisterSerializer,
     LoginSerializer,
     SupportServiceSerializer,
     SupportRequestSerializer,
+    SupportRequestUpdateSerializer,
     KBArticleSerializer,
+    ServiceImageSerializer,
+    ServiceImageResponseSerializer,
+    RequestLineUpdateSerializer,
+    MessageSerializer,
+    CartResponseSerializer,
+    AddToRequestResponseSerializer,
+    FormResponseSerializer,
+    FinishResponseSerializer,
+    RejectResponseSerializer,
+    LineUpdateResponseSerializer,
+    KBSearchResponseSerializer,
+    MetricsIngestSerializer,
+    MetricsResponseSerializer,
 )
-
-from .serializers import ServiceImageSerializer
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_session, delete_session, get_user_by_session_id
 
 
 User = get_user_model()
 
-@swagger_auto_schema(method='post', request_body=RegisterSerializer)
+@swagger_auto_schema(
+    method='post',
+    request_body=RegisterSerializer,
+    responses={201: MessageSerializer(), 400: MessageSerializer()},
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])
 def register_user_api(request):
-    serializer = UserSerializer(data=request.data)
+    serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response({"message": "User created"}, status=status.HTTP_201_CREATED)
+        return Response({"detail": "User created"}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @csrf_exempt
-@swagger_auto_schema(method='post', request_body=LoginSerializer)
+@swagger_auto_schema(
+    method='post',
+    request_body=LoginSerializer,
+    responses={200: MessageSerializer(), 400: MessageSerializer()},
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])
@@ -64,6 +84,7 @@ def login_api(request):
     resp.set_cookie("session_id", sid)
     return resp
 
+@swagger_auto_schema(method='post', responses={200: MessageSerializer()})
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])
@@ -98,6 +119,14 @@ def is_manager(user) -> bool:
 
 # ------------------ ДОМЕН УСЛУГ ------------------
 
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter('q', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Фильтр по названию услуги', required=False),
+    ],
+    responses={200: SupportServiceSerializer(many=True)},
+)
 @api_view(['GET'])
 def support_services_api(request):
     """GET список услуг с фильтром ?q= ; удалённые и неактивные не отдаём."""
@@ -107,6 +136,7 @@ def support_services_api(request):
         qs = qs.filter(title__icontains=q)
     return Response(SupportServiceSerializer(qs, many=True).data)
 
+@swagger_auto_schema(method='get', responses={200: SupportServiceSerializer(), 404: MessageSerializer()})
 @api_view(['GET'])
 def support_service_api(request, service_id: int):
     """GET одна услуга."""
@@ -116,9 +146,11 @@ def support_service_api(request, service_id: int):
         return Response({'detail': 'not found'}, status=404)
     return Response(SupportServiceSerializer(s).data)
 
+@swagger_auto_schema(
+    method='post',
+    responses={201: AddToRequestResponseSerializer(), 401: MessageSerializer(), 404: MessageSerializer()},
+)
 @api_view(['POST'])
-@authentication_classes([])
-@permission_classes([AllowAny])
 def support_service_add_to_request_api(request, service_id: int):
     """POST добавление услуги в текущую заявку-черновик."""
     user, err = require_user(request)
@@ -144,7 +176,11 @@ def support_service_add_to_request_api(request, service_id: int):
 
     return Response({'request_id': draft.id}, status=status.HTTP_201_CREATED)
 
-@swagger_auto_schema(method='post', request_body=SupportServiceSerializer)
+@swagger_auto_schema(
+    method='post',
+    request_body=SupportServiceSerializer,
+    responses={201: SupportServiceSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer()},
+)
 @api_view(['POST'])
 def support_service_create_api(request):
     user, err = require_user(request)
@@ -160,7 +196,11 @@ def support_service_create_api(request):
                         status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@swagger_auto_schema(method='put', request_body=ServiceImageSerializer)
+@swagger_auto_schema(
+    method='put',
+    request_body=ServiceImageSerializer,
+    responses={200: ServiceImageResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer(), 404: MessageSerializer()},
+)
 @api_view(['PUT'])
 def support_service_upload_image_api(request, service_id: int):
     user, err = require_user(request)
@@ -192,6 +232,7 @@ def support_service_upload_image_api(request, service_id: int):
 
 # ------------------ ДОМЕН ЗАЯВКИ ------------------
 
+@swagger_auto_schema(method='get', responses={200: CartResponseSerializer(), 401: MessageSerializer()})
 @api_view(['GET'])
 def support_request_cart_api(request):
     """
@@ -212,6 +253,7 @@ def support_request_cart_api(request):
     count = SupportRequestService.objects.filter(support_requests=draft).count()
     return Response({'request_id': draft.id, 'count': count})
 
+@swagger_auto_schema(method='get', responses={200: SupportRequestSerializer(), 401: MessageSerializer(), 404: MessageSerializer()})
 @api_view(['GET'])
 def support_request_api(request, rid: int):
     """GET одна заявка (+ её услуги). Удалённые не возвращаем."""
@@ -228,6 +270,7 @@ def support_request_api(request, rid: int):
 
     return Response(SupportRequestSerializer(req).data)
 
+@swagger_auto_schema(method='put', responses={200: FormResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer()})
 @api_view(['PUT'])
 def support_request_form_api(request, rid: int):
     """
@@ -254,6 +297,7 @@ def support_request_form_api(request, rid: int):
     req.save(update_fields=['status', 'requested_at'])
     return Response({'status': 'formed', 'requested_at': req.requested_at})
 
+@swagger_auto_schema(method='put', responses={200: FinishResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer()})
 @api_view(['PUT'])
 def support_request_finish_api(request, rid: int):
     """
@@ -283,9 +327,11 @@ def support_request_finish_api(request, rid: int):
             ln.save(update_fields=['ok'])
         req.status = SupportRequest.Status.FINISHED
         req.finished_at = now()
-        req.save(update_fields=['status', 'finished_at'])
+        req.engineer = user
+        req.save(update_fields=['status', 'finished_at', 'engineer'])
     return Response({'status': 'finished', 'finished_at': req.finished_at})
 
+@swagger_auto_schema(method='put', responses={200: RejectResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer()})
 @api_view(['PUT'])
 def support_request_reject_api(request, rid: int):
     """PUT отклонить заявку (модератором)."""
@@ -306,9 +352,11 @@ def support_request_reject_api(request, rid: int):
 
     req.status = SupportRequest.Status.REJECTED
     req.finished_at = now()
-    req.save(update_fields=['status', 'finished_at'])
+    req.engineer = user
+    req.save(update_fields=['status', 'finished_at', 'engineer'])
     return Response({'status': 'rejected', 'finished_at': req.finished_at})
 
+@swagger_auto_schema(method='delete', responses={204: 'No Content', 400: MessageSerializer(), 401: MessageSerializer()})
 @api_view(['DELETE'])
 def support_request_delete_api(request, rid: int):
     """DELETE логическое удаление черновика."""
@@ -329,6 +377,19 @@ def support_request_delete_api(request, rid: int):
         return Response({'detail': 'not allowed or not found'}, status=400)
     return Response(status=204)
 
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter('status', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Фильтр по статусу: formed|finished|rejected|draft',
+                          required=False),
+        openapi.Parameter('date_from', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Дата от (YYYY-MM-DD)', required=False),
+        openapi.Parameter('date_to', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Дата до (YYYY-MM-DD)', required=False),
+    ],
+    responses={200: SupportRequestSerializer(many=True), 401: MessageSerializer()},
+)
 @api_view(['GET'])
 def support_requests_list_api(request):
     """
@@ -361,14 +422,18 @@ def support_requests_list_api(request):
     qs = qs.order_by('-requested_at')
     return Response(SupportRequestSerializer(qs, many=True).data)
 
+@swagger_auto_schema(
+    method='put',
+    request_body=SupportRequestUpdateSerializer,
+    responses={200: SupportRequestSerializer(), 400: MessageSerializer(), 401: MessageSerializer()},
+)
 @api_view(['PUT'])
 def support_request_update_api(request, rid: int):
     """
-    PUT изменить поля заявки (комнату, описание и т.п.).
+    PUT изменить поля заявки (кабинет).
     Пример JSON:
     {
-      "room": "207",
-      "comment": "Срочно"
+      "room": "207"
     }
     """
     user, err = require_user(request)
@@ -383,15 +448,20 @@ def support_request_update_api(request, rid: int):
     if not is_manager(user) and req.requester_id != user.id:
         return Response({'detail': 'forbidden'}, status=403)
 
-    serializer = SupportRequestSerializer(req, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=400)
+    update_ser = SupportRequestUpdateSerializer(data=request.data)
+    if not update_ser.is_valid():
+        return Response(update_ser.errors, status=400)
+
+    for field, value in update_ser.validated_data.items():
+        setattr(req, field, value)
+    req.save(update_fields=list(update_ser.validated_data.keys()))
+
+    return Response(SupportRequestSerializer(req).data)
 
 
 # ------------------ ДОМЕН М-М (строки заявки) ------------------
 
+@swagger_auto_schema(method='delete', responses={204: 'No Content', 401: MessageSerializer(), 404: MessageSerializer()})
 @api_view(['DELETE'])
 def support_request_line_delete_api(request, rid: int, line_id: int):
     """DELETE строку из заявки (без удаления самой заявки)."""
@@ -413,6 +483,11 @@ def support_request_line_delete_api(request, rid: int, line_id: int):
     ).delete()
     return Response(status=204 if deleted else 404)
 
+@swagger_auto_schema(
+    method='put',
+    request_body=RequestLineUpdateSerializer,
+    responses={200: LineUpdateResponseSerializer(), 401: MessageSerializer(), 404: MessageSerializer()},
+)
 @api_view(['PUT'])
 def support_request_line_update_api(request, rid: int, line_id: int):
     """
@@ -435,13 +510,26 @@ def support_request_line_update_api(request, rid: int, line_id: int):
     except SupportRequestService.DoesNotExist:
         return Response({'detail': 'line not found'}, status=404)
 
-    comment = (request.data.get('comment') or '').strip()
-    line.comment = comment
+    ser = RequestLineUpdateSerializer(data=request.data)
+    if not ser.is_valid():
+        return Response(ser.errors, status=400)
+
+    line.comment = ser.validated_data.get('comment', '') or ''
     line.save(update_fields=['comment'])
     return Response({'id': line.id, 'comment': line.comment})
 
 # ------------------ KBArticleSerializer ------------------
 
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter('q', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Поиск по заголовку, содержанию, тегам', required=False),
+        openapi.Parameter('category', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Фильтр по категории', required=False),
+    ],
+    responses={200: KBArticleSerializer(many=True)},
+)
 @api_view(['GET'])
 def kb_articles_api(request):
     """GET список статей БЗ с фильтром ?q= и ?category=."""
@@ -459,6 +547,7 @@ def kb_articles_api(request):
     return Response(KBArticleSerializer(qs, many=True).data)
 
 
+@swagger_auto_schema(method='get', responses={200: KBArticleSerializer(), 404: MessageSerializer()})
 @api_view(['GET'])
 def kb_article_api(request, article_id: int):
     """GET одна статья БЗ."""
@@ -470,6 +559,16 @@ def kb_article_api(request, article_id: int):
 
 # ------------------ API эндпоинт поиска ------------------
 
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter('q', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                          description='Текст запроса для семантического поиска', required=True),
+        openapi.Parameter('top_k', openapi.IN_QUERY, type=openapi.TYPE_INTEGER,
+                          description='Количество результатов (макс. 20)', required=False),
+    ],
+    responses={200: KBSearchResponseSerializer(), 400: MessageSerializer()},
+)
 @api_view(['GET'])
 def kb_search_api(request):
     """
@@ -510,6 +609,11 @@ def kb_search_api(request):
     return Response({"query": q, "results": results})
 
 
+@swagger_auto_schema(
+    method='post',
+    request_body=MetricsIngestSerializer,
+    responses={200: MetricsResponseSerializer()},
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])
@@ -518,7 +622,7 @@ def metrics_ingest_api(request):
     POST /api/metrics/
     Приём клиентских метрик (latency агентов, faithfulness) → Pushgateway.
     """
-    import time
+    
     try:
         from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
