@@ -90,14 +90,16 @@ class SupportRequestUpdateSerializer(serializers.Serializer):
     room = serializers.CharField(required=False)
 
 
-class ServiceImageSerializer(serializers.Serializer):
-    img_url = serializers.CharField()
-
-
 class ServiceImageResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     title = serializers.CharField()
     img_url = serializers.CharField()
+
+
+class ImageUploadResponseSerializer(serializers.Serializer):
+    """Swagger-ответ для загрузки изображения (услуга или статья БЗ)."""
+    detail = serializers.CharField()
+    url = serializers.CharField()
 
 
 class RequestLineUpdateSerializer(serializers.Serializer):

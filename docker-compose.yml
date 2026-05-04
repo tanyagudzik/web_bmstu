@@ -23,8 +23,23 @@ services:
     container_name: bmstu_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
       - "8001:8001"   # RedisInsight UI
+
+  minio:
+    image: minio/minio:latest
+    container_name: bmstu_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"   # MinIO Console
+    volumes:
+      - bmstu_minio_data:/data
+    command: server /data --console-address ":9001"
 
 volumes:
   bmstu_pg_data:
+  bmstu_minio_data:

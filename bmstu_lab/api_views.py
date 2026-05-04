@@ -2,8 +2,9 @@ from django.db import transaction, models
 from django.utils.timezone import now
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, parser_classes
 from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -19,8 +20,8 @@ from .serializers import (
     SupportRequestSerializer,
     SupportRequestUpdateSerializer,
     KBArticleSerializer,
-    ServiceImageSerializer,
     ServiceImageResponseSerializer,
+    ImageUploadResponseSerializer,
     RequestLineUpdateSerializer,
     MessageSerializer,
     CartResponseSerializer,
@@ -35,9 +36,10 @@ from .serializers import (
 )
 from django.views.decorators.csrf import csrf_exempt
 from .utils import create_session, delete_session, get_user_by_session_id
-
+from .minio import add_pic
 
 User = get_user_model()
+
 
 @swagger_auto_schema(
     method='post',
@@ -84,6 +86,7 @@ def login_api(request):
     resp.set_cookie("session_id", sid)
     return resp
 
+
 @swagger_auto_schema(method='post', responses={200: MessageSerializer()})
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -117,6 +120,7 @@ def require_user(request):
 def is_manager(user) -> bool:
     return bool(user and (user.is_staff or user.is_superuser))
 
+
 # ------------------ ДОМЕН УСЛУГ ------------------
 
 @swagger_auto_schema(
@@ -136,6 +140,7 @@ def support_services_api(request):
         qs = qs.filter(title__icontains=q)
     return Response(SupportServiceSerializer(qs, many=True).data)
 
+
 @swagger_auto_schema(method='get', responses={200: SupportServiceSerializer(), 404: MessageSerializer()})
 @api_view(['GET'])
 def support_service_api(request, service_id: int):
@@ -145,6 +150,7 @@ def support_service_api(request, service_id: int):
     except SupportService.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
     return Response(SupportServiceSerializer(s).data)
+
 
 @swagger_auto_schema(
     method='post',
@@ -176,13 +182,16 @@ def support_service_add_to_request_api(request, service_id: int):
 
     return Response({'request_id': draft.id}, status=status.HTTP_201_CREATED)
 
+
 @swagger_auto_schema(
     method='post',
     request_body=SupportServiceSerializer,
-    responses={201: SupportServiceSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer()},
+    responses={201: SupportServiceSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
+               403: MessageSerializer()},
 )
 @api_view(['POST'])
 def support_service_create_api(request):
+    """POST создание услуги (JSON). Изображение загружается отдельно через PUT /image."""
     user, err = require_user(request)
     if err:
         return err
@@ -196,13 +205,20 @@ def support_service_create_api(request):
                         status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @swagger_auto_schema(
     method='put',
-    request_body=ServiceImageSerializer,
-    responses={200: ServiceImageResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer(), 404: MessageSerializer()},
+    manual_parameters=[
+        openapi.Parameter('pic', openapi.IN_FORM, type=openapi.TYPE_FILE,
+                          description='Файл изображения', required=True),
+    ],
+    responses={200: ServiceImageResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
+               403: MessageSerializer(), 404: MessageSerializer()},
 )
 @api_view(['PUT'])
+@parser_classes([MultiPartParser, FormParser])
 def support_service_upload_image_api(request, service_id: int):
+    """PUT загрузка изображения услуги через MinIO (по методичке ЛР3)."""
     user, err = require_user(request)
     if err:
         return err
@@ -218,17 +234,19 @@ def support_service_upload_image_api(request, service_id: int):
     except SupportService.DoesNotExist:
         return Response({'detail': 'service not found'}, status=404)
 
-    img_url = (request.data.get('img_url') or '').strip()
-    if not img_url:
-        return Response({'detail': 'img_url is required'}, status=400)
+    pic = request.FILES.get('pic')
+    if not pic:
+        return Response({'detail': 'pic file is required'}, status=400)
 
-    service.img_url = img_url
-    service.save(update_fields=['img_url'])
+    pic_result = add_pic(service, pic)
+    if 'error' in pic_result.data:
+        return pic_result
 
     return Response(
         {'id': service.id, 'title': service.title, 'img_url': service.img_url},
         status=status.HTTP_200_OK
     )
+
 
 # ------------------ ДОМЕН ЗАЯВКИ ------------------
 
@@ -253,7 +271,9 @@ def support_request_cart_api(request):
     count = SupportRequestService.objects.filter(support_requests=draft).count()
     return Response({'request_id': draft.id, 'count': count})
 
-@swagger_auto_schema(method='get', responses={200: SupportRequestSerializer(), 401: MessageSerializer(), 404: MessageSerializer()})
+
+@swagger_auto_schema(method='get',
+                     responses={200: SupportRequestSerializer(), 401: MessageSerializer(), 404: MessageSerializer()})
 @api_view(['GET'])
 def support_request_api(request, rid: int):
     """GET одна заявка (+ её услуги). Удалённые не возвращаем."""
@@ -270,12 +290,16 @@ def support_request_api(request, rid: int):
 
     return Response(SupportRequestSerializer(req).data)
 
-@swagger_auto_schema(method='put', responses={200: FormResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer()})
+
+@swagger_auto_schema(method='put',
+                     responses={200: FormResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer()})
 @api_view(['PUT'])
 def support_request_form_api(request, rid: int):
     """
     PUT сформировать заявку (создатель = фиксированный пользователь).
     Ставит статус 'formed' и requested_at.
+    Валидация: заявка должна содержать хотя бы одну услугу и обязательное поле room.
+    Расчёт: при формировании вычисляется amount в каждой строке м-м (qty * service.id как заглушка).
     """
     user, err = require_user(request)
     if err:
@@ -292,12 +316,30 @@ def support_request_form_api(request, rid: int):
     if req.status != SupportRequest.Status.DRAFT:
         return Response({'detail': 'only draft can be formed'}, status=400)
 
-    req.status = SupportRequest.Status.FORMED
-    req.requested_at = now()
-    req.save(update_fields=['status', 'requested_at'])
+    # Валидация обязательных полей
+    if not req.room:
+        return Response({'detail': 'room is required before forming'}, status=400)
+
+    lines = SupportRequestService.objects.filter(support_requests=req)
+    if not lines.exists():
+        return Response({'detail': 'request must have at least one service'}, status=400)
+
+    # Расчёт доп. поля в м-м при формировании
+    with transaction.atomic():
+        for ln in lines:
+            ln.amount = ln.qty * ln.support_service_id  # расчёт amount
+            ln.save(update_fields=['amount'])
+
+        req.status = SupportRequest.Status.FORMED
+        req.requested_at = now()
+        req.save(update_fields=['status', 'requested_at'])
+
     return Response({'status': 'formed', 'requested_at': req.requested_at})
 
-@swagger_auto_schema(method='put', responses={200: FinishResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer()})
+
+@swagger_auto_schema(method='put',
+                     responses={200: FinishResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
+                                403: MessageSerializer()})
 @api_view(['PUT'])
 def support_request_finish_api(request, rid: int):
     """
@@ -331,7 +373,10 @@ def support_request_finish_api(request, rid: int):
         req.save(update_fields=['status', 'finished_at', 'engineer'])
     return Response({'status': 'finished', 'finished_at': req.finished_at})
 
-@swagger_auto_schema(method='put', responses={200: RejectResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(), 403: MessageSerializer()})
+
+@swagger_auto_schema(method='put',
+                     responses={200: RejectResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
+                                403: MessageSerializer()})
 @api_view(['PUT'])
 def support_request_reject_api(request, rid: int):
     """PUT отклонить заявку (модератором)."""
@@ -356,6 +401,7 @@ def support_request_reject_api(request, rid: int):
     req.save(update_fields=['status', 'finished_at', 'engineer'])
     return Response({'status': 'rejected', 'finished_at': req.finished_at})
 
+
 @swagger_auto_schema(method='delete', responses={204: 'No Content', 400: MessageSerializer(), 401: MessageSerializer()})
 @api_view(['DELETE'])
 def support_request_delete_api(request, rid: int):
@@ -366,16 +412,17 @@ def support_request_delete_api(request, rid: int):
 
     updated = (SupportRequest.objects
                .filter(
-                   id=rid,
-                   status=SupportRequest.Status.DRAFT,
-                   is_deleted=False,
-                   requester=user
-               )
+        id=rid,
+        status=SupportRequest.Status.DRAFT,
+        is_deleted=False,
+        requester=user
+    )
 
                .update(is_deleted=True, deleted_at=now(), status=SupportRequest.Status.DELETED))
     if not updated:
         return Response({'detail': 'not allowed or not found'}, status=400)
     return Response(status=204)
+
 
 @swagger_auto_schema(
     method='get',
@@ -413,6 +460,9 @@ def support_requests_list_api(request):
 
     if status_param:
         qs = qs.filter(status=status_param)
+    else:
+        # По умолчанию исключаем черновики из списка (по требованию ЛР3)
+        qs = qs.exclude(status=SupportRequest.Status.DRAFT)
 
     if date_from:
         qs = qs.filter(requested_at__date__gte=date_from)
@@ -421,6 +471,7 @@ def support_requests_list_api(request):
 
     qs = qs.order_by('-requested_at')
     return Response(SupportRequestSerializer(qs, many=True).data)
+
 
 @swagger_auto_schema(
     method='put',
@@ -463,8 +514,8 @@ def support_request_update_api(request, rid: int):
 
 @swagger_auto_schema(method='delete', responses={204: 'No Content', 401: MessageSerializer(), 404: MessageSerializer()})
 @api_view(['DELETE'])
-def support_request_line_delete_api(request, rid: int, line_id: int):
-    """DELETE строку из заявки (без удаления самой заявки)."""
+def support_request_line_delete_api(request, rid: int, service_id: int):
+    """DELETE строку из заявки по (rid, service_id) — без PK м-м (по требованию ЛР3)."""
     user, err = require_user(request)
     if err:
         return err
@@ -478,10 +529,11 @@ def support_request_line_delete_api(request, rid: int, line_id: int):
         return Response({'detail': 'forbidden'}, status=403)
 
     deleted, _ = SupportRequestService.objects.filter(
-        id=line_id,
-        support_requests=req
+        support_requests=req,
+        support_service_id=service_id,
     ).delete()
     return Response(status=204 if deleted else 404)
+
 
 @swagger_auto_schema(
     method='put',
@@ -489,9 +541,9 @@ def support_request_line_delete_api(request, rid: int, line_id: int):
     responses={200: LineUpdateResponseSerializer(), 401: MessageSerializer(), 404: MessageSerializer()},
 )
 @api_view(['PUT'])
-def support_request_line_update_api(request, rid: int, line_id: int):
+def support_request_line_update_api(request, rid: int, service_id: int):
     """
-    PUT изменить значения в М-М: по замечанию оставляем comment.
+    PUT изменить строку м-м по (rid, service_id) — без PK м-м (по требованию ЛР3).
     """
     user, err = require_user(request)
     if err:
@@ -506,7 +558,10 @@ def support_request_line_update_api(request, rid: int, line_id: int):
         return Response({'detail': 'forbidden'}, status=403)
 
     try:
-        line = SupportRequestService.objects.get(id=line_id, support_requests=req)
+        line = SupportRequestService.objects.get(
+            support_requests=req,
+            support_service_id=service_id,
+        )
     except SupportRequestService.DoesNotExist:
         return Response({'detail': 'line not found'}, status=404)
 
@@ -517,6 +572,7 @@ def support_request_line_update_api(request, rid: int, line_id: int):
     line.comment = ser.validated_data.get('comment', '') or ''
     line.save(update_fields=['comment'])
     return Response({'id': line.id, 'comment': line.comment})
+
 
 # ------------------ KBArticleSerializer ------------------
 
@@ -556,6 +612,42 @@ def kb_article_api(request, article_id: int):
     except KBArticle.DoesNotExist:
         return Response({'detail': 'not found'}, status=404)
     return Response(KBArticleSerializer(a).data)
+
+
+@swagger_auto_schema(
+    method='put',
+    manual_parameters=[
+        openapi.Parameter('pic', openapi.IN_FORM, type=openapi.TYPE_FILE,
+                          description='Файл изображения статьи БЗ', required=True),
+    ],
+    responses={200: ImageUploadResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
+               403: MessageSerializer(), 404: MessageSerializer()},
+)
+@api_view(['PUT'])
+@parser_classes([MultiPartParser, FormParser])
+def kb_article_upload_image_api(request, article_id: int):
+    """PUT загрузка изображения статьи БЗ через MinIO."""
+    user, err = require_user(request)
+    if err:
+        return err
+    if not is_manager(user):
+        return Response({'detail': 'forbidden'}, status=403)
+
+    try:
+        article = KBArticle.objects.get(pk=article_id, is_active=True)
+    except KBArticle.DoesNotExist:
+        return Response({'detail': 'not found'}, status=404)
+
+    pic = request.FILES.get('pic')
+    if not pic:
+        return Response({'detail': 'pic file is required'}, status=400)
+
+    pic_result = add_pic(article, pic)
+    if 'error' in pic_result.data:
+        return pic_result
+
+    return Response({'detail': 'image uploaded', 'url': article.img_url})
+
 
 # ------------------ API эндпоинт поиска ------------------
 
@@ -622,7 +714,7 @@ def metrics_ingest_api(request):
     POST /api/metrics/
     Приём клиентских метрик (latency агентов, faithfulness) → Pushgateway.
     """
-    
+
     try:
         from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 

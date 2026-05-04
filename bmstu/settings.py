@@ -29,7 +29,9 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-unsafe-placeholder")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv(
+    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0"
+).split(",")
 
 
 
@@ -161,5 +163,15 @@ REST_FRAMEWORK = {
     ],
 }
 
-REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6380"))
+
+# ──── MinIO (S3-совместимое хранилище) ────
+AWS_STORAGE_BUCKET_NAME = os.getenv("MINIO_BUCKET", "support-files")
+AWS_ACCESS_KEY_ID = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+AWS_SECRET_ACCESS_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+# Внутренний адрес для SDK (внутри Docker: minio:9000, локально: localhost:9000)
+AWS_S3_ENDPOINT_URL = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+# Публичный адрес для формирования URL, доступных из браузера
+MINIO_PUBLIC_ENDPOINT = os.getenv("MINIO_PUBLIC_ENDPOINT", "localhost:9000")
+MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"

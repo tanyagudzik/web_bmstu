@@ -25,13 +25,14 @@ urlpatterns = [
     path('api/support_requests', v.support_requests_list_api, name='api_support_requests'),
     path('api/support_request/<int:rid>/update', v.support_request_update_api, name='api_support_request_update'),
 
-    # М-М (строки заявки)
-    path('api/support_request/<int:rid>/line/<int:line_id>', v.support_request_line_update_api, name='api_support_request_line_update'),
-    path('api/support_request/<int:rid>/line/<int:line_id>/delete', v.support_request_line_delete_api, name='api_support_request_line_delete'),
+    # М-М (строки заявки) — адресация по (rid, service_id) без PK м-м
+    path('api/support_request/<int:rid>/line/<int:service_id>', v.support_request_line_update_api, name='api_support_request_line_update'),
+    path('api/support_request/<int:rid>/line/<int:service_id>/delete', v.support_request_line_delete_api, name='api_support_request_line_delete'),
 
     # БАЗА ЗНАНИЙ
     path('api/kb/articles', v.kb_articles_api, name='api_kb_articles'),
     path('api/kb/article/<int:article_id>', v.kb_article_api, name='api_kb_article'),
+    path('api/kb/article/<int:article_id>/image', v.kb_article_upload_image_api, name='api_kb_article_image'),
 
     # ПОИСК ПО БЗ (Redis Vector Search)
     path('api/kb/search', v.kb_search_api, name='api_kb_search'),
