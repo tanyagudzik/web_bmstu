@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import { api } from '../api';
 
 interface UserState {
     email: string;
@@ -17,26 +17,40 @@ const initialState: UserState = {
     error: null,
 };
 
+/** Авторизация */
 export const loginUserAsync = createAsyncThunk(
-    'user/login',
+    'user/loginUserAsync',
     async (credentials: { email: string; password: string }, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/api/login', credentials);
-            return response.data;
+            await api.login.loginCreate(credentials);
+            // Бэкенд возвращает {detail: 'logged in'}, email берём из формы
+            return { email: credentials.email };
         } catch {
             return rejectWithValue('Ошибка авторизации');
         }
     }
 );
 
+/** Деавторизация */
 export const logoutUserAsync = createAsyncThunk(
-    'user/logout',
+    'user/logoutUserAsync',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/api/logout');
-            return response.data;
+            await api.logout.logoutCreate();
         } catch {
             return rejectWithValue('Ошибка при выходе');
+        }
+    }
+);
+
+/** Регистрация — Register требует username: string (не optional) */
+export const registerUserAsync = createAsyncThunk(
+    'user/registerUserAsync',
+    async (data: { email: string; password: string; username: string }, { rejectWithValue }) => {
+        try {
+            await api.register.registerCreate(data);
+        } catch {
+            return rejectWithValue('Ошибка регистрации');
         }
     }
 );
@@ -50,8 +64,11 @@ const userSlice = createSlice({
             .addCase(loginUserAsync.pending, (state) => {
                 state.error = null;
             })
-            .addCase(loginUserAsync.fulfilled, (state) => {
+            .addCase(loginUserAsync.fulfilled, (state, action) => {
+                state.email = action.payload.email;
+                state.username = action.payload.email;
                 state.isAuthenticated = true;
+                state.isStaff = false;
                 state.error = null;
             })
             .addCase(loginUserAsync.rejected, (state, action) => {
@@ -64,6 +81,15 @@ const userSlice = createSlice({
                 state.isAuthenticated = false;
                 state.isStaff = false;
                 state.error = null;
+            })
+            .addCase(registerUserAsync.pending, (state) => {
+                state.error = null;
+            })
+            .addCase(registerUserAsync.fulfilled, (state) => {
+                state.error = null;
+            })
+            .addCase(registerUserAsync.rejected, (state, action) => {
+                state.error = action.payload as string;
             });
     },
 });

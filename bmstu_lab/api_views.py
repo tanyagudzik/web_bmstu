@@ -157,6 +157,8 @@ def support_service_api(request, service_id: int):
     responses={201: AddToRequestResponseSerializer(), 401: MessageSerializer(), 404: MessageSerializer()},
 )
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_service_add_to_request_api(request, service_id: int):
     """POST добавление услуги в текущую заявку-черновик."""
     user, err = require_user(request)
@@ -190,6 +192,8 @@ def support_service_add_to_request_api(request, service_id: int):
                403: MessageSerializer()},
 )
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_service_create_api(request):
     """POST создание услуги (JSON). Изображение загружается отдельно через PUT /image."""
     user, err = require_user(request)
@@ -216,6 +220,8 @@ def support_service_create_api(request):
                403: MessageSerializer(), 404: MessageSerializer()},
 )
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 @parser_classes([MultiPartParser, FormParser])
 def support_service_upload_image_api(request, service_id: int):
     """PUT загрузка изображения услуги через MinIO (по методичке ЛР3)."""
@@ -252,6 +258,8 @@ def support_service_upload_image_api(request, service_id: int):
 
 @swagger_auto_schema(method='get', responses={200: CartResponseSerializer(), 401: MessageSerializer()})
 @api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_cart_api(request):
     """
     GET иконки корзины (без входных параметров):
@@ -275,6 +283,8 @@ def support_request_cart_api(request):
 @swagger_auto_schema(method='get',
                      responses={200: SupportRequestSerializer(), 401: MessageSerializer(), 404: MessageSerializer()})
 @api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_api(request, rid: int):
     """GET одна заявка (+ её услуги). Удалённые не возвращаем."""
     user, err = require_user(request)
@@ -294,6 +304,8 @@ def support_request_api(request, rid: int):
 @swagger_auto_schema(method='put',
                      responses={200: FormResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer()})
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_form_api(request, rid: int):
     """
     PUT сформировать заявку (создатель = фиксированный пользователь).
@@ -341,6 +353,8 @@ def support_request_form_api(request, rid: int):
                      responses={200: FinishResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
                                 403: MessageSerializer()})
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_finish_api(request, rid: int):
     """
     PUT завершить заявку (модератором).
@@ -378,6 +392,8 @@ def support_request_finish_api(request, rid: int):
                      responses={200: RejectResponseSerializer(), 400: MessageSerializer(), 401: MessageSerializer(),
                                 403: MessageSerializer()})
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_reject_api(request, rid: int):
     """PUT отклонить заявку (модератором)."""
     user, err = require_user(request)
@@ -404,6 +420,8 @@ def support_request_reject_api(request, rid: int):
 
 @swagger_auto_schema(method='delete', responses={204: 'No Content', 400: MessageSerializer(), 401: MessageSerializer()})
 @api_view(['DELETE'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_delete_api(request, rid: int):
     """DELETE логическое удаление черновика."""
     user, err = require_user(request)
@@ -438,6 +456,8 @@ def support_request_delete_api(request, rid: int):
     responses={200: SupportRequestSerializer(many=True), 401: MessageSerializer()},
 )
 @api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_requests_list_api(request):
     """
     GET список заявок (для фильтров):
@@ -479,6 +499,8 @@ def support_requests_list_api(request):
     responses={200: SupportRequestSerializer(), 400: MessageSerializer(), 401: MessageSerializer()},
 )
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_update_api(request, rid: int):
     """
     PUT изменить поля заявки (кабинет).
@@ -514,6 +536,8 @@ def support_request_update_api(request, rid: int):
 
 @swagger_auto_schema(method='delete', responses={204: 'No Content', 401: MessageSerializer(), 404: MessageSerializer()})
 @api_view(['DELETE'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_line_delete_api(request, rid: int, service_id: int):
     """DELETE строку из заявки по (rid, service_id) — без PK м-м (по требованию ЛР3)."""
     user, err = require_user(request)
@@ -541,6 +565,8 @@ def support_request_line_delete_api(request, rid: int, service_id: int):
     responses={200: LineUpdateResponseSerializer(), 401: MessageSerializer(), 404: MessageSerializer()},
 )
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def support_request_line_update_api(request, rid: int, service_id: int):
     """
     PUT изменить строку м-м по (rid, service_id) — без PK м-м (по требованию ЛР3).
@@ -624,6 +650,8 @@ def kb_article_api(request, article_id: int):
                403: MessageSerializer(), 404: MessageSerializer()},
 )
 @api_view(['PUT'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 @parser_classes([MultiPartParser, FormParser])
 def kb_article_upload_image_api(request, article_id: int):
     """PUT загрузка изображения статьи БЗ через MinIO."""

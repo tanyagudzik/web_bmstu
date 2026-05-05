@@ -1,24 +1,30 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import AppNavbar from './components/Navbar'
-import HomePage from './pages/HomePage'
-import ServicesPage from './pages/ServicesPage'
-import ServicePage from './pages/ServicePage'
-import RequestPage from './pages/RequestPage'
-import KBSearchPage from './pages/KBSearchPage'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AppNavbar from './components/Navbar';
+import Breadcrumbs from './components/Breadcrumbs';
+import HomePage from './pages/HomePage';
+import ServicesPage from './pages/ServicesPage';
+import ServicePage from './pages/ServicePage';
+import RequestPage from './pages/RequestPage';
+import KBSearchPage from './pages/KBSearchPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 function App() {
-  return (
-    <BrowserRouter>
-      <AppNavbar />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/support_services" element={<ServicesPage />} />
-        <Route path="/support_service/:id" element={<ServicePage />} />
-        <Route path="/support_request" element={<RequestPage />} />
-        <Route path="/kb" element={<KBSearchPage />} />
-      </Routes>
-    </BrowserRouter>
-  )
+    return (
+        <BrowserRouter>
+            <AppNavbar />
+            <Breadcrumbs />
+            <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/support_services" element={<ServicesPage />} />
+                <Route path="/support_service/:id" element={<ServicePage />} />
+                <Route path="/support_request/:id" element={<RequestPage />} />
+                <Route path="/kb" element={<KBSearchPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
-export default App
+export default App;
