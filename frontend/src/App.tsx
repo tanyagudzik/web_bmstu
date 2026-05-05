@@ -8,6 +8,7 @@ import RequestPage from './pages/RequestPage';
 import KBSearchPage from './pages/KBSearchPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import RequestsListPage from './pages/RequestsListPage';
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
                 <Route path="/support_services" element={<ServicesPage />} />
                 <Route path="/support_service/:id" element={<ServicePage />} />
                 <Route path="/support_request/:id" element={<RequestPage />} />
+                <Route path="/support_requests" element={<RequestsListPage />} />
                 <Route path="/kb" element={<KBSearchPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
@@ -28,3 +30,4 @@ function App() {
 }
 
 export default App;
+

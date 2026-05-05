@@ -5,6 +5,7 @@ const LABELS: Record<string, string> = {
     'support_services': 'Услуги',
     'support_service': 'Услуга',
     'support_request': 'Заявка',
+    'support_requests': 'Заявки',
     'kb': 'База знаний',
     'login': 'Авторизация',
     'register': 'Регистрация',

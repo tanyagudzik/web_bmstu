@@ -5,6 +5,7 @@ import requestReducer from './slices/requestSlice';
 import servicesReducer from './slices/servicesSlice';
 import chatReducer from './slices/chatSlice';
 import agentReducer from './slices/agentSlice';
+import requestsListReducer from './slices/requestsListSlice';
 
 const store = configureStore({
     reducer: combineReducers({
@@ -14,6 +15,7 @@ const store = configureStore({
         services: servicesReducer,
         chat: chatReducer,
         agent: agentReducer,
+        requestsList: requestsListReducer,
     }),
 });
 

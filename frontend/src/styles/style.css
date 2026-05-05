@@ -563,3 +563,110 @@ body {
 .btn--danger-outline:hover {
   background: rgba(217, 83, 79, 0.07) !important;
 }
+
+/* =========================
+   REQUESTS LIST PAGE
+========================= */
+
+.reqs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: flex-end;
+}
+
+.reqs-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.reqs-filter__label {
+  font-weight: 600;
+  color: #555;
+}
+
+.reqs-filter__select,
+.reqs-filter__input {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  min-width: 150px;
+}
+
+.reqs-filter__select:focus,
+.reqs-filter__input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(67, 134, 243, 0.18);
+}
+
+/* таблица */
+.reqs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.reqs-table th {
+  background: var(--surface);
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--line);
+  white-space: nowrap;
+}
+
+.reqs-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.reqs-table__row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.reqs-table__row:hover {
+  background: rgba(67, 134, 243, 0.05);
+}
+
+/* статус-бейджи */
+.reqs-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reqs-status--draft {
+  background: #e0e0e0;
+  color: #555;
+}
+
+.reqs-status--formed {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.reqs-status--finished {
+  background: #d4edda;
+  color: #155724;
+}
+
+.reqs-status--rejected {
+  background: #f8d7da;
+  color: #721c24;
+}

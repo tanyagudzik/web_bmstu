@@ -5,6 +5,7 @@ import type { AppDispatch, RootState } from '../store';
 import { logoutUserAsync } from '../slices/userSlice';
 import { clearRequest } from '../slices/requestSlice';
 import { setSearchValue } from '../slices/servicesSlice';
+import { clearRequestsList } from '../slices/requestsListSlice';
 
 function AppNavbar() {
     const dispatch = useDispatch<AppDispatch>();
@@ -15,6 +16,7 @@ function AppNavbar() {
     const handleLogout = async () => {
         await dispatch(logoutUserAsync());
         dispatch(clearRequest());
+        dispatch(clearRequestsList());
         dispatch(setSearchValue(''));
         navigate('/support_services');
     };
@@ -36,6 +38,9 @@ function AppNavbar() {
             <nav style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <Link to="/support_services" style={{ color: 'white', textDecoration: 'none' }}>
                     Услуги
+                </Link>
+                <Link to="/support_requests" style={{ color: 'white', textDecoration: 'none' }}>
+                    Заявки
                 </Link>
                 <Link to="/kb" style={{ color: 'white', textDecoration: 'none' }}>
                     База знаний
