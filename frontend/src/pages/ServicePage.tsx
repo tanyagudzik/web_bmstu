@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Spinner, Card, Button } from 'react-bootstrap';
+import { Container, Spinner, Card, Button, Alert } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store';
 import { addServiceToRequest, fetchCart } from '../slices/requestSlice';
@@ -17,6 +17,8 @@ function ServicePage() {
 
     const [service, setService] = useState<SupportService | null>(null);
     const [loading, setLoading] = useState(true);
+    const [adding, setAdding] = useState(false);
+    const [addError, setAddError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -41,9 +43,18 @@ function ServicePage() {
     }, [id]);
 
     const handleAdd = async () => {
-        if (!service?.id) return;
-        await dispatch(addServiceToRequest(service.id));
-        dispatch(fetchCart());
+        if (!service?.id || adding) return;
+        setAdding(true);
+        setAddError(null);
+        try {
+            await dispatch(addServiceToRequest(service.id)).unwrap();
+            dispatch(fetchCart());
+        } catch (e) {
+            console.error('Ошибка добавления услуги:', e);
+            setAddError((typeof e === 'string' ? e : null) || 'Не удалось добавить услугу');
+        } finally {
+            setAdding(false);
+        }
     };
 
     if (loading) {
@@ -87,9 +98,27 @@ function ServicePage() {
                             <h2>{service.title}</h2>
                             <p>{service.description ?? ''}</p>
                             {service.eta ? <p><strong>ETA:</strong> {service.eta}</p> : null}
+
+                            {addError && (
+                                <Alert variant="danger" className="mt-2 mb-2 py-2 px-3">
+                                    {addError}
+                                </Alert>
+                            )}
+
                             {isAuthenticated && (
-                                <Button variant="primary" onClick={handleAdd}>
-                                    Добавить в заявку
+                                <Button
+                                    variant="primary"
+                                    onClick={handleAdd}
+                                    disabled={adding}
+                                >
+                                    {adding ? (
+                                        <>
+                                            <Spinner animation="border" size="sm" />{' '}
+                                            Добавление…
+                                        </>
+                                    ) : (
+                                        'Добавить в заявку'
+                                    )}
                                 </Button>
                             )}
                         </div>

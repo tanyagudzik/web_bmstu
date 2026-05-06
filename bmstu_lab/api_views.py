@@ -16,6 +16,7 @@ from .models import SupportService, SupportRequest, SupportRequestService, KBArt
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
+    LoginResponseSerializer,
     SupportServiceSerializer,
     SupportRequestSerializer,
     SupportRequestUpdateSerializer,
@@ -61,7 +62,7 @@ def register_user_api(request):
 @swagger_auto_schema(
     method='post',
     request_body=LoginSerializer,
-    responses={200: MessageSerializer(), 400: MessageSerializer()},
+    responses={200: LoginResponseSerializer(), 400: MessageSerializer()},
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -82,7 +83,10 @@ def login_api(request):
     # РУЧНАЯ СЕССИЯ: uuid -> email в Redis, cookie session_id
     sid = create_session(user.get_username())
 
-    resp = Response({'detail': 'logged in'}, status=200)
+    resp = Response({
+        'detail': 'logged in',
+        'is_staff': user.is_staff,
+    }, status=200)
     resp.set_cookie("session_id", sid)
     return resp
 

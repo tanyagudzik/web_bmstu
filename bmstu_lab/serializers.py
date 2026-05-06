@@ -45,6 +45,12 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
 
+class LoginResponseSerializer(serializers.Serializer):
+    """Ответ на успешный логин — detail + is_staff."""
+    detail = serializers.CharField()
+    is_staff = serializers.BooleanField()
+
+
 class SupportServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupportService

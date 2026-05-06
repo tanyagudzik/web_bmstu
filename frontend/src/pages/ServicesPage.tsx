@@ -15,6 +15,7 @@ function ServicesPage() {
     const { draftId, draftCount } = useSelector((state: RootState) => state.request);
 
     const [etaFilter, setEtaFilter] = useState('');
+    const [addingServiceId, setAddingServiceId] = useState<number | null>(null);
 
     useEffect(() => {
         dispatch(getServicesList());
@@ -29,9 +30,16 @@ function ServicesPage() {
     };
 
     const handleAdd = async (serviceId: number | undefined) => {
-        if (!serviceId) return;
-        await dispatch(addServiceToRequest(serviceId));
-        dispatch(fetchCart());
+        if (!serviceId || addingServiceId !== null) return;
+        setAddingServiceId(serviceId);
+        try {
+            await dispatch(addServiceToRequest(serviceId)).unwrap();
+            dispatch(fetchCart());
+        } catch (e) {
+            console.error('Ошибка добавления услуги:', e);
+        } finally {
+            setAddingServiceId(null);
+        }
     };
 
     const filtered = etaFilter
@@ -123,8 +131,13 @@ function ServicesPage() {
                                                 type="button"
                                                 className="btn btn--primary card__action-btn"
                                                 onClick={() => handleAdd(item.id)}
+                                                disabled={addingServiceId !== null}
                                             >
-                                                Добавить в заявку
+                                                {addingServiceId === item.id ? (
+                                                    <Spinner animation="border" size="sm" />
+                                                ) : (
+                                                    'Добавить в заявку'
+                                                )}
                                             </button>
                                         )}
                                     </div>

@@ -22,9 +22,13 @@ export const loginUserAsync = createAsyncThunk(
     'user/loginUserAsync',
     async (credentials: { email: string; password: string }, { rejectWithValue }) => {
         try {
-            await api.login.loginCreate(credentials);
-            // Бэкенд возвращает {detail: 'logged in'}, email берём из формы
-            return { email: credentials.email };
+            const response = await api.login.loginCreate(credentials);
+            // Бэкенд возвращает {detail: 'logged in', is_staff: true/false}
+            const data = response.data as { detail: string; is_staff?: boolean };
+            return {
+                email: credentials.email,
+                isStaff: data.is_staff ?? false,
+            };
         } catch {
             return rejectWithValue('Ошибка авторизации');
         }
@@ -68,12 +72,15 @@ const userSlice = createSlice({
                 state.email = action.payload.email;
                 state.username = action.payload.email;
                 state.isAuthenticated = true;
-                state.isStaff = false;
+                state.isStaff = action.payload.isStaff;
                 state.error = null;
             })
             .addCase(loginUserAsync.rejected, (state, action) => {
-                state.error = action.payload as string;
+                state.email = '';
+                state.username = '';
                 state.isAuthenticated = false;
+                state.isStaff = false;
+                state.error = action.payload as string;
             })
             .addCase(logoutUserAsync.fulfilled, (state) => {
                 state.email = '';
