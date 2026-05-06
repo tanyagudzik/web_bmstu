@@ -44,6 +44,12 @@ const chatSlice = createSlice({
                 msg.faithful = action.payload.faithful;
             }
         },
+        setSources(state, action: PayloadAction<{ messageId: string; sources: ChatMessage['sources'] }>) {
+            const msg = state.messages.find(m => m.id === action.payload.messageId);
+            if (msg) {
+                msg.sources = action.payload.sources;
+            }
+        },
         clearChat(state) {
             state.messages = [];
         },
@@ -55,6 +61,7 @@ export const {
     addMessage,
     updateLastMessage,
     setFaithful,
+    setSources,
     clearChat,
 } = chatSlice.actions;
 export default chatSlice.reducer;

@@ -93,7 +93,7 @@ class SupportRequestSerializer(serializers.ModelSerializer):
 
 class SupportRequestUpdateSerializer(serializers.Serializer):
     """Swagger-сериализатор для PUT изменения полей заявки."""
-    room = serializers.CharField(required=False)
+    room = serializers.CharField(required=False, allow_blank=True)
 
 
 class ServiceImageResponseSerializer(serializers.Serializer):

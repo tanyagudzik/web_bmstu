@@ -343,10 +343,7 @@ export interface RejectResponse {
 }
 
 export interface SupportRequestUpdate {
-  /**
-   * Room
-   * @minLength 1
-   */
+  /** Room */
   room?: string;
 }
 

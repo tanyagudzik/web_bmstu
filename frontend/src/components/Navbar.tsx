@@ -6,6 +6,8 @@ import { logoutUserAsync } from '../slices/userSlice';
 import { clearRequest } from '../slices/requestSlice';
 import { setSearchValue } from '../slices/servicesSlice';
 import { clearRequestsList } from '../slices/requestsListSlice';
+import { clearChat } from '../slices/chatSlice';
+import { resetAgentPipeline } from '../slices/agentSlice';
 
 function AppNavbar() {
     const dispatch = useDispatch<AppDispatch>();
@@ -18,6 +20,8 @@ function AppNavbar() {
         dispatch(clearRequest());
         dispatch(clearRequestsList());
         dispatch(setSearchValue(''));
+        dispatch(clearChat());
+        dispatch(resetAgentPipeline());
         navigate('/support_services');
     };
 
@@ -44,6 +48,9 @@ function AppNavbar() {
                 </Link>
                 <Link to="/kb" style={{ color: 'white', textDecoration: 'none' }}>
                     База знаний
+                </Link>
+                <Link to="/chat" style={{ color: 'white', textDecoration: 'none' }}>
+                    Чат
                 </Link>
             </nav>
 

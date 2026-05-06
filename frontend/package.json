@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
+    "@mlc-ai/web-llm": "^0.2.83",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.16.0",
     "bootstrap": "^5.3.8",

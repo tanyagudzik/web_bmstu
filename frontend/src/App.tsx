@@ -9,6 +9,7 @@ import KBSearchPage from './pages/KBSearchPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import RequestsListPage from './pages/RequestsListPage';
+import ChatPage from './pages/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 
@@ -24,6 +25,7 @@ function App() {
                 <Route path="/support_request/:id" element={<RequestPage />} />
                 <Route path="/support_requests" element={<RequestsListPage />} />
                 <Route path="/kb" element={<KBSearchPage />} />
+                <Route path="/chat" element={<ChatPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/403" element={<ForbiddenPage />} />
@@ -34,4 +36,3 @@ function App() {
 }
 
 export default App;
-
